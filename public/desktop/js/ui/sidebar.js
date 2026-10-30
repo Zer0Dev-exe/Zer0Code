@@ -1,6 +1,5 @@
 import { h, clear, icon, monogram, providerMark, timeAgo, basename, showPopover, closePopover, menuItem } from '../dom.js';
 import { state, on, setUi, newThread, openSession, deleteSession, togglePin, sessionStatus, projectList, loadSessions, updateActions, logout } from '../store.js';
-import { skySvg } from './sky.js';
 import { openPalette, openSettings, openOrchestrator, openUsage, openFolderPicker, openDisplayName } from './dialogs.js';
 import { openWhatsNew } from './whatsnew.js';
 
@@ -18,25 +17,29 @@ export function mountSidebar(root) {
 }
 
 function head() {
-  const stage = h('div', { class: 'sidebar-stage', html: skySvg() });
-  return h('div', { class: 'sidebar-head' },
-    stage,
-    h('div', { class: 'sidebar-brand drag' },
-      h('button', { class: 'icon-btn', type: 'button', title: 'Ocultar barra lateral (Ctrl B)', onclick: () => setUi({ sidebar: false }) }, icon('panel-left')),
-      h('img', { class: 'logo', src: '../icon.svg', alt: '' }),
-      h('span', { class: 'name' }, h('b', null, 'Zer0'), 'Code')));
+  return h('div', { class: 'sidebar-head drag' },
+    h('div', { class: 'sidebar-identity' },
+      h('img', { class: 'identity-logo', src: '../icon.svg', alt: '' }),
+      h('div', { class: 'identity-wordmark' },
+        h('span', { class: 'identity-name' }, 'Zer0', h('span', null, 'Code')),
+        h('span', { class: 'identity-caption' }, 'Ideas que toman forma'))),
+    h('button', { class: 'icon-btn identity-collapse', type: 'button', title: 'Ocultar barra lateral (Ctrl B)', 'aria-label': 'Ocultar barra lateral', onclick: () => setUi({ sidebar: false }) }, icon('panel-left')));
 }
 
 function top() {
   const filtered = state.ui.filter !== 'all';
-  const filterBtn = h('button', { class: `icon-btn sidebar-icon-btn${filtered ? ' active' : ''}`, type: 'button', title: filtered ? `Proyecto: ${basename(state.ui.filter)}` : 'Filtrar por proyecto',
-    onclick: () => openFilterMenu(filterBtn) }, icon('filter'), filtered ? h('span', { class: 'filter-dot' }) : null);
+  const filterLabel = filtered ? `Proyecto: ${basename(state.ui.filter)}` : 'Filtrar por proyecto';
+  const filterBtn = h('button', { class: `icon-btn sidebar-icon-btn${filtered ? ' active' : ''}`, type: 'button', title: filterLabel,
+    'aria-label': filterLabel, onclick: () => openFilterMenu(filterBtn) }, icon('filter'), filtered ? h('span', { class: 'filter-dot' }) : null);
   return h('div', { class: 'sidebar-top' },
+    h('button', { class: 'sidebar-create', type: 'button', title: 'Nuevo hilo (Ctrl N)', onclick: () => newThread() },
+      icon('plus'), h('span', null, 'Crear hilo'), h('span', { class: 'create-mark', 'aria-hidden': 'true' }, '↗')),
+    h('div', { class: 'sidebar-library' },
+      h('span', { class: 'library-label' }, 'Tus conversaciones'),
+      h('button', { class: 'icon-btn sidebar-icon-btn', type: 'button', title: 'Añadir proyecto', 'aria-label': 'Añadir proyecto', onclick: () => openFolderPicker() }, icon('folder-plus'))),
     h('div', { class: 'search-row' },
-      h('button', { class: 'sidebar-btn', type: 'button', onclick: openPalette }, icon('search'), 'Buscar'),
-      filterBtn,
-      h('button', { class: 'icon-btn sidebar-icon-btn', type: 'button', title: 'Añadir proyecto', onclick: () => openFolderPicker() }, icon('folder-plus')),
-      h('button', { class: 'icon-btn sidebar-icon-btn', type: 'button', title: 'Nuevo hilo (Ctrl N)', onclick: () => newThread() }, icon('square-pen'))));
+      h('button', { class: 'sidebar-search', type: 'button', onclick: openPalette }, icon('search'), h('span', null, 'Buscar conversaciones')),
+      filterBtn));
 }
 
 function openFilterMenu(anchor) {
