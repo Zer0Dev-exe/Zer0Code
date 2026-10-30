@@ -19,8 +19,10 @@ on:
       - 'desktop/**'
       - '.github/workflows/release.yml'
 
+# Por defecto los jobs solo leen el repositorio (compilan con código del PR o del tag);
+# solo el job que sube los instaladores al release puede escribir.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: instaladores-${{ github.event.release.tag_name || inputs.tag || github.ref }}
@@ -291,6 +293,8 @@ jobs:
   publish:
     name: Adjuntar al release
     needs: [version, windows, linux, macos, android, desktop]
+    permissions:
+      contents: write
     if: needs.version.outputs.tag != ''
     runs-on: ubuntu-latest
     steps:
