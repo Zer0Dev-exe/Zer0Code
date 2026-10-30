@@ -4401,6 +4401,10 @@ async function renderAppModal() {
   installBtn.hidden = true;
   installBtn.textContent = 'Instalar app';
   delete installBtn.dataset.action;
+  const versionSection = document.getElementById('app-version-section');
+  const appVersion = inAndroidApp() && typeof window.Zer0CodeAndroid.appVersion === 'function' ? window.Zer0CodeAndroid.appVersion() : '';
+  if (versionSection) versionSection.hidden = !appVersion;
+  if (appVersion) document.getElementById('app-version-hint').textContent = `Tienes Zer0Code ${appVersion} para Android. Mira qué hay de nuevo y actualiza la app desde aquí.`;
   if (inAndroidApp()) {
     installHint.textContent = 'Estás usando la app de Android, conectada a este servidor.';
     installBtn.textContent = 'Cambiar de servidor';
@@ -4456,6 +4460,10 @@ function closeAppModal() {
 }
 
 function setupAppInstall() {
+  // En la app de Android el menú enseña la versión instalada
+  const androidVersion = inAndroidApp() && typeof window.Zer0CodeAndroid.appVersion === 'function' ? window.Zer0CodeAndroid.appVersion() : '';
+  const appRowLabel = document.querySelector('#btn-user-app span');
+  if (androidVersion && appRowLabel) appRowLabel.textContent = `App y novedades · v${androidVersion}`;
   document.getElementById('btn-user-app')?.addEventListener('click', openAppModal);
   document.getElementById('btn-close-app')?.addEventListener('click', closeAppModal);
   document.getElementById('app-modal')?.addEventListener('click', (e) => {
@@ -4472,6 +4480,13 @@ function setupAppInstall() {
     await deferredInstallPrompt.userChoice.catch(() => null);
     deferredInstallPrompt = null;
     renderAppModal();
+  });
+
+  document.getElementById('btn-app-whatsnew')?.addEventListener('click', () => {
+    // Apps anteriores sin la hoja de novedades: al menos buscan actualizaciones
+    if (typeof window.Zer0CodeAndroid?.showWhatsNew === 'function') window.Zer0CodeAndroid.showWhatsNew();
+    else window.Zer0CodeAndroid?.checkUpdates?.();
+    closeAppModal();
   });
 
   document.getElementById('btn-app-push')?.addEventListener('click', async (e) => {

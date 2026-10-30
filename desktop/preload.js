@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('Zer0CodeDesktop', {
   installUpdate: () => ipcRenderer.invoke('desktop:install-update'),
   skipUpdate: (version) => ipcRenderer.invoke('desktop:skip-update', version),
   onUpdate: (callback) => ipcRenderer.on('desktop:update', (_event, state) => callback(state)),
+  // Novedades: los últimos releases con sus notas, y descartar el aviso de «actualizado a…»
+  getReleases: () => ipcRenderer.invoke('desktop:releases'),
+  dismissUpdateNotice: () => ipcRenderer.invoke('desktop:dismiss-update-notice'),
   // Linux (ventana sin marco): minimizar, maximizar y cerrar
   windowControl: (action) => ipcRenderer.invoke('desktop:window', action),
   // Colores de los controles de ventana (Windows y Linux) según el tema de la web

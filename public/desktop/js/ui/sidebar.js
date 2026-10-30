@@ -2,6 +2,7 @@ import { h, clear, icon, monogram, providerMark, timeAgo, basename, showPopover,
 import { state, on, setUi, newThread, openSession, deleteSession, togglePin, sessionStatus, projectList, loadSessions, updateActions } from '../store.js';
 import { skySvg } from './sky.js';
 import { openPalette, openSettings, openOrchestrator, openUsage, openFolderPicker, openDisplayName } from './dialogs.js';
+import { openWhatsNew } from './whatsnew.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -127,7 +128,17 @@ function updatePill() {
   return h('div', { class: 'update-pill' },
     h('button', { class: 'update-main', type: 'button', onclick: updateActions.install, title: u.latest.inPlace ? 'Descargar e instalar' : 'Descargar el instalador' },
       icon('arrow-up'), h('span', { class: 'grow truncate' }, `Actualizar a v${v}`)),
+    h('button', { class: 'icon-btn', type: 'button', title: 'Ver las novedades', onclick: () => openWhatsNew() }, icon('list')),
     h('button', { class: 'icon-btn', type: 'button', title: 'Omitir esta versión', onclick: () => updateActions.skip(v) }, icon('x')));
+}
+
+// Versión instalada: abre las novedades (con un punto cuando hay una versión nueva)
+function versionChip() {
+  const u = state.update;
+  if (!u?.current) return null;
+  const fresh = u.status === 'available' && u.latest;
+  return h('button', { class: `version-chip${fresh ? ' fresh' : ''}`, type: 'button', title: fresh ? `Novedades · disponible la v${u.latest.version}` : 'Novedades de Zer0Code', onclick: () => openWhatsNew() },
+    fresh ? h('span', { class: 'version-dot' }) : null, `v${u.current}`);
 }
 
 function foot() {
@@ -138,6 +149,7 @@ function foot() {
     h('button', { class: 'icon-btn', type: 'button', title: 'Ajustes', onclick: openSettings }, icon('settings')),
     h('button', { class: 'icon-btn', type: 'button', title: 'Orquestador de agentes', onclick: openOrchestrator }, icon('orch')),
     h('button', { class: 'icon-btn', type: 'button', title: 'Uso y gasto', onclick: openUsage }, icon('chart')),
+    versionChip(),
     h('span', { class: 'grow' }),
     h('button', { class: 'conn profile-name truncate', type: 'button', title: 'Cambiar nombre visible', onclick: openDisplayName }, h('span', { class: `conn-dot ${conn[0]}`, title: conn[1] }), avatar, name));
 }

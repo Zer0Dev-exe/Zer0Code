@@ -5,6 +5,8 @@ import {
   effortLevelsFor, logout, projectList, loadStatus, updateActions, on, saveDisplayName
 } from '../store.js';
 
+import { openWhatsNew } from './whatsnew.js';
+
 const short = (n) => String(n || '').replace(/^Claude\s+/i, '');
 const EFFORT_LABEL = { low: 'Bajo', medium: 'Medio', high: 'Alto', xhigh: 'Muy alto', max: 'Máximo' };
 
@@ -54,6 +56,7 @@ export function openPalette() {
     { t: 'Orquestador de agentes', ic: 'orch', run: () => openOrchestrator() },
     { t: 'Ajustes', ic: 'settings', run: () => openSettings() },
     { t: 'Uso y gasto', ic: 'chart', run: () => openUsage() },
+    ...(state.update?.current ? [{ t: 'Novedades y actualizaciones', ic: 'zap', run: () => openWhatsNew() }] : []),
     ...(state.user?.role === 'admin' ? [{ t: 'Gestionar usuarios', ic: 'shield', run: () => openUsers() }] : []),
     { t: state.ui.panel.open ? 'Ocultar panel de cambios' : 'Mostrar panel de cambios', ic: 'panel-right', run: () => setUi({ panel: { ...state.ui.panel, open: !state.ui.panel.open } }) }
   ];
@@ -221,10 +224,11 @@ export async function openSettings() {
     clear(verRow);
     verRow.append(h('span', { class: 'label' }, 'Versión'),
       h('div', { class: 'acct' }, icon('zap'), h('div', { class: 'grow' }, `Zer0Code ${u.current}`, h('small', null, status)),
+        h('button', { class: 'btn-sm', type: 'button', onclick: () => { dlg.close(); openWhatsNew(); } }, 'Novedades'),
         u.status === 'available'
           ? h('button', { class: 'btn-sm btn-primary', type: 'button', onclick: () => { updateActions.install(); } }, 'Actualizar')
           : h('button', { class: 'btn-sm', type: 'button', disabled: u.status === 'checking' || u.status === 'downloading', onclick: () => updateActions.check() }, 'Buscar actualizaciones')),
-      u.status === 'available' && u.latest.notes ? h('div', { class: 'hint', style: { whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' } }, u.latest.notes) : null);
+      null);
   };
   drawVersion();
   const offUpdate = on('update', drawVersion);

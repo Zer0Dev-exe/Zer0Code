@@ -80,6 +80,8 @@ public class MainActivity extends Activity {
         serverUrl = prefs().getString(KEY_SERVER, null);
         if (serverUrl == null) showSetup(null);
         else showWeb();
+        // ¿Se acaba de actualizar (novedades) o falló la última actualización?
+        Updater.onAppStart(this);
     }
 
     // ------------------------------------------------------------------------
@@ -147,12 +149,17 @@ public class MainActivity extends Activity {
         hint.setGravity(Gravity.CENTER);
         column.addView(hint, matchWidth(dp(16)));
 
-        // Versión y búsqueda manual de actualizaciones (el release de GitHub más nuevo)
-        TextView version = text("Versión " + BuildConfig.VERSION_NAME + " · Buscar actualizaciones", 12, R.color.muted);
+        // Versión instalada: abre las novedades (y desde ahí, buscar actualizaciones)
+        TextView version = text("v" + BuildConfig.VERSION_NAME + "  ·  Novedades", 12, R.color.muted);
+        version.setTypeface(Typeface.MONOSPACE);
         version.setGravity(Gravity.CENTER);
-        version.setPadding(dp(8), dp(8), dp(8), dp(8));
-        version.setOnClickListener(v -> Updater.check(this, true));
-        column.addView(version, matchWidth(dp(8)));
+        version.setPadding(dp(14), dp(6), dp(14), dp(6));
+        version.setBackground(rounded(R.color.field, dp(999), true));
+        version.setOnClickListener(v -> Updater.showWhatsNew(this, null));
+        LinearLayout.LayoutParams versionParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        versionParams.topMargin = dp(16);
+        versionParams.gravity = Gravity.CENTER_HORIZONTAL;
+        column.addView(version, versionParams);
 
         View.OnClickListener go = v -> {
             String url = normalize(input.getText().toString());
@@ -379,6 +386,12 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String appVersion() {
             return BuildConfig.VERSION_NAME;
+        }
+
+        /** window.Zer0CodeAndroid.showWhatsNew(): novedades de la app y actualizar */
+        @JavascriptInterface
+        public void showWhatsNew() {
+            main.post(() -> Updater.showWhatsNew(MainActivity.this, null));
         }
     }
 

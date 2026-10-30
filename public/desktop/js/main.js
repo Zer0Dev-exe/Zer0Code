@@ -4,6 +4,7 @@ import { mountSidebar } from './ui/sidebar.js';
 import { mountWorkspace } from './ui/workspace.js';
 import { renderLogin } from './ui/login.js';
 import { openPalette } from './ui/dialogs.js';
+import { watchUpdateNotices } from './ui/whatsnew.js';
 
 const root = document.getElementById('root');
 let started = false;
@@ -41,6 +42,7 @@ async function mountApp() {
   newThread();
   if (!started) {
     started = true;
+    watchUpdateNotices();
     await startSession().catch((err) => { console.error(err); });
   }
 }

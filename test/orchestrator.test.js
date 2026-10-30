@@ -199,4 +199,23 @@ test('actualizaciones: comparar versiones y elegir el instalador de cada sistema
   assert.equal(pick({ platform: 'freebsd', arch: 'x64' }), undefined); // sistema sin instalador
   // El instalador antiguo (servidor) y el APK nunca se confunden con la app de escritorio
   assert.equal(pickAsset([{ name: 'Zer0Code-Setup-1.4.0-x64.exe' }], { platform: 'win32', arch: 'x64' }), null);
+  // Linux sin AppImage ni dpkg (Arch, Fedora…): no hay instalador que abrir
+  assert.equal(pickAsset(assets, { platform: 'linux', arch: 'x64', appImage: false, dpkg: false }), null);
+  assert.equal(pick({ platform: 'linux', arch: 'x64', appImage: true, dpkg: false }), 'Zer0Code-Desktop-1.4.0-linux-x86_64.AppImage');
+});
+
+test('actualizaciones: novedades ordenadas y sin borradores', async () => {
+  const { createRequire } = await import('module');
+  const { summarizeReleases } = createRequire(import.meta.url)('../desktop/updateLogic.js');
+  const list = summarizeReleases([
+    { tag_name: 'v1.5.2', body: 'b\r\nc', published_at: '2026-10-23T06:33:07Z', html_url: 'u2' },
+    { tag_name: 'v1.5.10', name: 'Zer0Code 1.5.10', body: 'nueva', prerelease: true },
+    { tag_name: 'v1.6.0', draft: true },
+    { tag_name: 'nightly' }
+  ]);
+  assert.deepEqual(list.map(r => r.version), ['1.5.10', '1.5.2']);
+  assert.equal(list[0].prerelease, true);
+  assert.equal(list[1].notes, 'b\nc');
+  assert.equal(list[1].name, 'v1.5.2');
+  assert.deepEqual(summarizeReleases(null), []);
 });

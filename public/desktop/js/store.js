@@ -603,6 +603,8 @@ function setUpdate(st) {
     updateToasted = st.latest.version;
     toast(`Hay una versión nueva: Zer0Code ${st.latest.version}`);
   }
+  // Recién actualizada (o la actualización no llegó a aplicarse): la interfaz enseña las novedades o el aviso
+  if (st?.justUpdated) emit('just-updated', st.justUpdated);
 }
 
 export function initUpdates() {
@@ -612,10 +614,23 @@ export function initUpdates() {
   bridge.onUpdate(setUpdate);
 }
 
+// Novedades: las pide el proceso principal; una app de escritorio anterior no sabe, y se piden a GitHub directamente
+async function fetchReleases() {
+  const bridge = window.Zer0CodeDesktop;
+  if (bridge?.getReleases) return bridge.getReleases();
+  const res = await fetch('https://api.github.com/repos/Zer0Dev-exe/Zer0Code/releases?per_page=15', { headers: { Accept: 'application/vnd.github+json' } });
+  if (!res.ok) throw new Error(`GitHub respondió ${res.status}`);
+  return (await res.json())
+    .filter(r => !r.draft && /^v?\d+\.\d+\.\d+/.test(r.tag_name || ''))
+    .map(r => ({ version: r.tag_name.replace(/^v/i, ''), name: r.name || r.tag_name, date: r.published_at, notes: String(r.body || '').trim(), url: r.html_url, prerelease: !!r.prerelease }));
+}
+
 export const updateActions = {
   check: () => window.Zer0CodeDesktop?.checkUpdate?.().then(setUpdate),
   install: () => window.Zer0CodeDesktop?.installUpdate?.(),
-  skip: (version) => window.Zer0CodeDesktop?.skipUpdate?.(version)
+  skip: (version) => window.Zer0CodeDesktop?.skipUpdate?.(version),
+  releases: fetchReleases,
+  dismissNotice: () => { if (state.update) state.update = { ...state.update, justUpdated: null }; return window.Zer0CodeDesktop?.dismissUpdateNotice?.(); }
 };
 
 export async function startSession() {

@@ -107,7 +107,7 @@ async function checkServer(origin) {
 // ---------------------------------------------------------------------------
 // Actualizaciones (releases de GitHub)
 // ---------------------------------------------------------------------------
-const updater = createUpdater({ getConfig: () => config, saveConfig, quit: () => quitApp() });
+const updater = createUpdater({ getConfig: () => config, saveConfig, quit: () => quitApp(), logDir: LOG_DIR });
 
 // ---------------------------------------------------------------------------
 // Servidor integrado (modo local)
@@ -513,6 +513,8 @@ ipcMain.handle('desktop:get-update', () => updater.state());
 ipcMain.handle('desktop:check-update', () => updater.check({ manual: true }));
 ipcMain.handle('desktop:install-update', () => updater.install());
 ipcMain.handle('desktop:skip-update', (event, version) => { updater.skip(String(version || '')); return true; });
+ipcMain.handle('desktop:releases', () => updater.releases());
+ipcMain.handle('desktop:dismiss-update-notice', () => { updater.dismissNotice(); return true; });
 
 ipcMain.handle('desktop:change-server', () => showConnectScreen().then(() => true));
 ipcMain.handle('desktop:focus', () => { showWindow(); return true; });
