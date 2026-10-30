@@ -298,6 +298,28 @@ function getSessionFor(token) {
 // Límite de intentos por IP
 // --------------------------------------------------------------------------
 const failedLogins = new Map();
+const MAX_TRACKED_IPS = 10000;
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+/**
+ * IP real de quien intenta entrar. Detrás de un proxy en la misma máquina (cloudflared, Tailscale Serve,
+ * nginx…) todas las peticiones llegan desde 127.0.0.1: sin esto, cinco fallos de cualquiera bloquearían
+ * a todo el mundo.
+ *
+ * Solo se cree la ÚLTIMA entrada de X-Forwarded-For: es la que añade el proxy más cercano con la IP que
+ * él ve (Cloudflare, Tailscale Serve, Caddy y nginx con proxy_add_x_forwarded_for). Las anteriores, igual
+ * que CF-Connecting-IP o X-Real-IP, las puede traer el propio cliente (Tailscale Serve las deja pasar) y
+ * servirían para esquivar el bloqueo o bloquear a otro. Y solo si la conexión viene de esta máquina.
+ */
+export function clientIp(req) {
+  const peer = req?.socket?.remoteAddress || req?.ip || '';
+  if (LOOPBACK_ADDRESSES.has(peer)) {
+    const hops = String(req.headers?.['x-forwarded-for'] || '').split(',').map(v => v.trim()).filter(Boolean);
+    const nearest = hops.at(-1);
+    if (nearest && /^[0-9a-fA-F:.]{2,45}$/.test(nearest)) return nearest;
+  }
+  return peer || 'desconocida';
+}
 
 function lockoutFor(ip) {
   const entry = failedLogins.get(ip);
@@ -307,6 +329,8 @@ function lockoutFor(ip) {
 }
 
 function registerFailure(ip) {
+  // Muchas IP distintas (ataque repartido): se olvidan las más antiguas para no crecer sin límite
+  if (!failedLogins.has(ip) && failedLogins.size >= MAX_TRACKED_IPS) failedLogins.delete(failedLogins.keys().next().value);
   const entry = failedLogins.get(ip) || { count: 0, lockedUntil: null };
   entry.count += 1;
   if (entry.count >= MAX_FAILED_LOGINS) {
@@ -322,7 +346,7 @@ function registerFailure(ip) {
 // API
 // --------------------------------------------------------------------------
 export function login(username, password, req) {
-  const ip = req?.ip || 'desconocida';
+  const ip = clientIp(req);
   const lockedUntil = lockoutFor(ip);
   if (lockedUntil) {
     const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
