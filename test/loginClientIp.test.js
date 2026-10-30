@@ -24,20 +24,26 @@ function request(peer, headers = {}) {
 }
 
 for (const peer of ['127.0.0.1', '::1', '::ffff:127.0.0.1']) {
-  test(`clientIp acepta las cabeceras del proxy local ${peer}`, () => {
-    assert.equal(clientIp(request(peer, { 'cf-connecting-ip': ' 203.0.113.10 ' })), '203.0.113.10');
-    assert.equal(clientIp(request(peer, { 'x-real-ip': '2001:db8::10' })), '2001:db8::10');
+  test(`clientIp solo acepta la última entrada de XFF desde el proxy local ${peer}`, () => {
+    assert.equal(clientIp(request(peer, { 'cf-connecting-ip': ' 203.0.113.10 ' })), peer);
+    assert.equal(clientIp(request(peer, { 'x-real-ip': '2001:db8::10' })), peer);
     assert.equal(clientIp(request(peer, {
-      'x-forwarded-for': '198.51.100.99, 203.0.113.20, 2001:db8::20 '
+      'x-forwarded-for': 'entrada-falsa, 198.51.100.99, 203.0.113.20, 2001:db8::20 '
     })), '2001:db8::20');
     assert.equal(clientIp(request(peer, {
       'cf-connecting-ip': '203.0.113.30',
       'x-real-ip': '203.0.113.31',
       'x-forwarded-for': '203.0.113.32'
-    })), '203.0.113.30');
+    })), '203.0.113.32');
     assert.equal(clientIp(request(peer, {
       'x-real-ip': '203.0.113.31', 'x-forwarded-for': '203.0.113.32'
-    })), '203.0.113.31');
+    })), '203.0.113.32');
+    assert.equal(clientIp(request(peer, {
+      'cf-connecting-ip': '203.0.113.30', 'x-forwarded-for': '203.0.113.32'
+    })), '203.0.113.32');
+    assert.equal(clientIp(request(peer, {
+      'cf-connecting-ip': '203.0.113.30', 'x-real-ip': '203.0.113.31'
+    })), peer);
   });
 }
 
@@ -72,8 +78,8 @@ test('login bloquea tras cinco fallos solo la IP real y libera el bloqueo a los 
   const start = Date.now();
   let now = start;
   t.mock.method(Date, 'now', () => now);
-  const blocked = request('127.0.0.1', { 'cf-connecting-ip': '203.0.113.100' });
-  const other = request('127.0.0.1', { 'cf-connecting-ip': '203.0.113.101' });
+  const blocked = request('127.0.0.1', { 'x-forwarded-for': '198.51.100.99, 203.0.113.100' });
+  const other = request('127.0.0.1', { 'x-forwarded-for': '198.51.100.99, 203.0.113.101' });
   for (let attempt = 0; attempt < 5; attempt++) {
     const result = login(username, wrongPassword, blocked);
     assert.equal(result.success, false);
@@ -100,7 +106,7 @@ test('login bloquea tras cinco fallos solo la IP real y libera el bloqueo a los 
 });
 
 test('login borra el contador de fallos después de un acierto', () => {
-  const req = request('::1', { 'x-real-ip': '203.0.113.102' });
+  const req = request('::1', { 'x-forwarded-for': '198.51.100.99, 203.0.113.102' });
   for (let attempt = 0; attempt < 4; attempt++) {
     assert.equal(login(username, wrongPassword, req).success, false);
   }
@@ -117,3 +123,23 @@ test('login borra el contador de fallos después de un acierto', () => {
   assert.equal(nextSuccess.success, true);
   logout(nextSuccess.token);
 });
+
+for (const header of ['cf-connecting-ip', 'x-real-ip']) {
+  test(`login no permite esquivar el bloqueo cambiando ${header}`, () => {
+    const ip = header === 'cf-connecting-ip' ? '203.0.113.103' : '203.0.113.104';
+    const req = attempt => request('::ffff:127.0.0.1', {
+      // También cambia la entrada falsificada anterior a la que añade el proxy.
+      'x-forwarded-for': `198.51.100.${attempt}, ${ip}`,
+      [header]: `192.0.2.${attempt}`
+    });
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const result = login(username, wrongPassword, req(attempt));
+      assert.equal(result.success, false);
+      if (attempt < 5) assert.notEqual(result.locked, true);
+      else assert.match(result.message, /Demasiados intentos fallidos/);
+    }
+    const result = login(username, password, req(6));
+    assert.equal(result.success, false);
+    assert.equal(result.locked, true);
+  });
+}
