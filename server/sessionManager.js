@@ -106,6 +106,24 @@ export function updateSessionTitle(id, title) {
   return null;
 }
 
+/**
+ * Pasar la conversación a otra carpeta (proyecto). Claude y ChatGPT pueden seguir con su sesión (la de Claude
+ * se copia a la carpeta nueva al reanudar); las de Gemini y AGY dependen de la carpeta y se descartan: el
+ * siguiente turno les pasa el historial del chat como contexto.
+ */
+export function moveSession(id, workspace) {
+  const s = sessions[id];
+  if (!s) return null;
+  s.workspace = workspace;
+  if (s.providerSessions) {
+    const { gemini, agy, ...rest } = s.providerSessions;
+    s.providerSessions = rest;
+  }
+  s.updatedAt = Date.now();
+  saveSessions();
+  return s;
+}
+
 export function setClaudeSessionId(id, claudeSessionId) {
   if (sessions[id]) {
     sessions[id].claudeSessionId = claudeSessionId;

@@ -1815,6 +1815,10 @@ function handleWsMessage(data) {
       updateWorkspaceUI(data.workspace);
       break;
 
+    case 'session_moved':
+      showToast(`${data.created ? 'Proyecto creado' : 'Conversación movida'}: ${data.name || data.workspace}`);
+      break;
+
     case 'models_updated':
       applyModelsList(data.models, data.defaultModel);
       break;
@@ -3583,7 +3587,7 @@ function tightestPlanWindow() {
     .sort((a, b) => b.percent - a.percent)[0] || null;
 }
 
-const PROVIDER_ICONS = { claude: 'spark', codex: 'openai', gemini: 'gemini' };
+const PROVIDER_ICONS = { claude: 'claude', codex: 'openai', gemini: 'gemini' };
 
 // Ventana de cuota más apurada (sesión o semana) de un proveedor
 function tightestWindow(quota) {
@@ -3600,11 +3604,11 @@ function renderPlanChip() {
   if (!win) {
     chip.hidden = false;
     chip.className = 'chip-btn plan-chip';
-    chip.innerHTML = '<svg class="chip-icon"><use href="#i-spark"/></svg>Claude · cuota no disponible';
+    chip.innerHTML = '<svg class="chip-icon"><use href="#i-claude"/></svg>Claude · cuota no disponible';
     return;
   }
   chip.className = `chip-btn plan-chip ${win.percent >= PLAN_CRITICAL_PERCENT ? 'is-full' : win.percent >= PLAN_WARN_PERCENT ? 'is-warn' : ''}`;
-  chip.innerHTML = `<svg class="chip-icon"><use href="#i-spark"/></svg>Claude ${Math.round(win.percent)}%`;
+  chip.innerHTML = `<svg class="chip-icon"><use href="#i-claude"/></svg>Claude ${Math.round(win.percent)}%`;
   chip.title = `${win.key === 'session' ? 'Sesión' : 'Semana'}: ${formatPlanReset(win.resetsAt)}`;
   chip.hidden = false;
 }

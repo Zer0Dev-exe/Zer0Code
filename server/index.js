@@ -34,8 +34,10 @@ import {
   requestPermission,
   answerPermission,
   listPendingFor,
-  forgetChat
+  forgetChat,
+  runTaskAction
 } from './permissionManager.js';
+import { createProject, projectToolHint, isProjectEdit } from './projectCreator.js';
 
 import {
   getClaudeAuthStatus,
@@ -111,7 +113,8 @@ import {
   setReviewerSessionId,
   deleteSession,
   assignLegacyOwner,
-  deleteSessionsByOwner
+  deleteSessionsByOwner,
+  moveSession
 } from './sessionManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -162,6 +165,15 @@ app.post('/internal/permission', express.json({ limit: '20mb' }), async (req, re
   }
   const decision = await requestPermission(secret, req.body || {});
   res.json(decision);
+});
+
+// Herramientas de Zer0Code que usa el modelo desde el mismo servidor MCP (p. ej. crear un proyecto)
+app.post('/internal/action', express.json({ limit: '1mb' }), async (req, res) => {
+  const secret = req.headers['x-zer0code-secret'];
+  if (!LOOPBACK.has(req.socket.remoteAddress) || typeof secret !== 'string') {
+    return res.status(403).json({ ok: false, error: 'No autorizado' });
+  }
+  res.json(await runTaskAction(secret, String(req.body?.action || ''), req.body?.args));
 });
 
 app.use(express.json());
@@ -301,9 +313,9 @@ function sendTaskEvent(owner, data) {
 }
 
 // Dirección a la que llama el servidor MCP de permisos (siempre en este mismo equipo)
-function permissionCallbackUrl() {
+function permissionCallbackUrl(route = 'permission') {
   const host = !HOST || HOST === '0.0.0.0' || HOST === '::' ? '127.0.0.1' : HOST;
-  return `http://${host.includes(':') ? `[${host}]` : host}:${PORT}/internal/permission`;
+  return `http://${host.includes(':') ? `[${host}]` : host}:${PORT}/internal/${route}`;
 }
 
 // Límite mensual del usuario con la cuenta del anfitrión (null = sin límite o no aplica)
@@ -861,12 +873,35 @@ function startTurn(user, params) {
     if (liveTasks.get(owner)?.message === assistantMsg) liveTasks.delete(owner);
   };
 
-  // Puente de permisos de esta tarea: las rutas fuera de las carpetas del usuario se deniegan sin preguntar
+  // Puente de permisos de esta tarea: las rutas fuera de las carpetas del usuario se deniegan sin preguntar.
+  // El desarrollador puede además crear un proyecto y mover la conversación a él (como en T3 Code).
+  // Tras mover la conversación a un proyecto, la carpeta nueva queda fuera del directorio de trabajo de esta
+  // tarea: con «Aceptar ediciones» o «Autónomo», editar dentro de ella no pide permiso archivo a archivo.
+  let movedTo = null;
   const permissionSecret = registerTask({
     owner,
     chatId: currentSession.id,
-    check: (tool, input) => toolPathViolation(user, tool, input, targetWs)
+    check: (tool, input) => toolPathViolation(user, tool, input, targetWs),
+    auto: (tool, input) => movedTo && ['acceptEdits', 'auto'].includes(mode) && isProjectEdit(tool, input, movedTo) ? { behavior: 'allow' } : null,
+    actions: currentSession.incognito ? null : {
+      create_project: (args) => {
+        const project = createProject(user, args);
+        movedTo = project.dir;
+        moveSession(currentSession.id, project.dir);
+        try {
+          setWorkspace(user, project.dir);
+          sendToUser(owner, { type: 'workspace_changed', workspace: project.dir });
+        } catch {
+          // la carpeta activa no cambia, pero la conversación sí se ha movido
+        }
+        sendToUser(owner, { type: 'session_moved', sessionId: currentSession.id, workspace: project.dir, name: project.name, created: project.created });
+        notifySessionsChanged(owner);
+        return project;
+      }
+    }
   });
+  // Solo Claude habla con el servidor MCP de Zer0Code (los demás proveedores no lo cargan)
+  const canCreateProjects = provider === 'claude' && !currentSession.incognito;
 
   const controller = reviewer
     ? createReviewController({
@@ -1012,7 +1047,8 @@ function startTurn(user, params) {
         prompt: autoFixPrompt(lastReview),
         sessionId: currentSession.id,
         attachments: [],
-        workspace: targetWs,
+        // Si el desarrollador movió la conversación a un proyecto nuevo, la corrección sigue allí
+        workspace: getSession(currentSession.id)?.workspace || targetWs,
         origin: 'autofix',
         round: round + 1,
         maxRounds: orch.maxRounds
@@ -1028,13 +1064,13 @@ function startTurn(user, params) {
       owner,
       restricted: isRestricted(user),
       permissionMode: mode,
-      permissionBridge: { url: permissionCallbackUrl(), secret: permissionSecret },
+      permissionBridge: { url: permissionCallbackUrl(), secret: permissionSecret, ...(canCreateProjects ? { actionUrl: permissionCallbackUrl('action') } : {}) },
       model: model || null,
       apiKey: apiKey || null,
       attachments: attachmentList,
       effort: effort || null,
       outputStyle: outputStyle || null,
-      customInstructions: [CHAT_IMAGE_HINT, getProfilePrompt(owner), typeof customInstructions === 'string' ? customInstructions : '']
+      customInstructions: [CHAT_IMAGE_HINT, canCreateProjects ? projectToolHint(targetWs) : '', getProfilePrompt(owner), typeof customInstructions === 'string' ? customInstructions : '']
         .filter(Boolean).join('\n\n') || null,
       onEvent: (event) => {
         // Id de la sesión del proveedor, por si el servidor se apaga antes de terminar

@@ -9,12 +9,14 @@ const EDIT_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
 const TOOL_VIEW = {
   Read: ['file', 'Leyendo'], Write: ['pencil', 'Creando'], Edit: ['pencil', 'Editando'], MultiEdit: ['pencil', 'Editando'], NotebookEdit: ['pencil', 'Editando'],
   Bash: ['terminal', 'Ejecutando'], Grep: ['search', 'Buscando'], Glob: ['search', 'Buscando archivos'], LS: ['folder', 'Listando'],
-  WebFetch: ['globe', 'Consultando'], WebSearch: ['globe', 'Buscando en la web'], Task: ['bot', 'Subagente'], Agent: ['bot', 'Subagente'], TodoWrite: ['list', 'Lista de tareas']
+  WebFetch: ['globe', 'Consultando'], WebSearch: ['globe', 'Buscando en la web'], Task: ['bot', 'Subagente'], Agent: ['bot', 'Subagente'], TodoWrite: ['list', 'Lista de tareas'],
+  mcp__zer0code__create_project: ['folder-plus', 'Creando el proyecto']
 };
 
 function describeTool(t, workspace) {
   const i = t.input || {};
   const [ic, verb] = TOOL_VIEW[t.tool] || ['zap', t.tool];
+  if (t.tool === 'mcp__zer0code__create_project') return { ic, verb, target: String(i.name || i.folder || '').slice(0, 140) };
   const file = i.file_path || i.notebook_path || i.path;
   const target = file ? relativePath(file, workspace) : (i.command || i.pattern || i.query || i.url || i.description || '');
   return { ic, verb, target: String(target).replace(/\s+/g, ' ').slice(0, 140) };

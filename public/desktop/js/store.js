@@ -402,6 +402,30 @@ export function handleEvent(data) {
       break;
     }
 
+    // El modelo ha creado un proyecto (o elegido uno) y ha movido la conversación allí: la interfaz la sigue
+    case 'session_moved': {
+      const dir = data.workspace;
+      if (!dir) break;
+      if (!state.projects.includes(dir)) {
+        state.projects.unshift(dir);
+        write('z0d_projects', state.projects.slice(0, 50));
+      }
+      const s = state.sessions.find(x => x.id === data.sessionId);
+      if (s) s.workspace = dir;
+      if (state.session?.id === data.sessionId) {
+        state.session = { ...state.session, workspace: dir };
+        for (const m of state.messages) if (m.status === 'running') m.workspace = dir;
+        if (state.ui.filter !== 'all' && state.ui.filter !== dir) setUi({ filter: dir });
+        emit('thread');
+      }
+      state.workspace = dir;
+      loadGitSummary(dir, { force: true });
+      emit('sessions');
+      emit('composer');
+      toast(`${data.created ? 'Proyecto creado' : 'Conversación movida'}: ${data.name || basename(dir)}`);
+      break;
+    }
+
     case 'sessions_changed':
       clearTimeout(sessionsTimer);
       sessionsTimer = setTimeout(async () => {

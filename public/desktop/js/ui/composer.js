@@ -4,6 +4,7 @@ import {
   respondPermission, activeWorkspace, projectList, newThread, setPanel, saveOrchestration
 } from '../store.js';
 import { openOrchestrator, openFolderPicker } from './dialogs.js';
+import { openModelPicker, installModelShortcuts } from './modelpicker.js';
 
 const MODES = [
   { id: 'plan', label: 'Plan', desc: 'Analiza y propone, sin tocar nada', icon: 'list' },
@@ -32,6 +33,7 @@ function readFile(file) {
 }
 
 export function createComposer() {
+  installModelShortcuts();
   const wrap = h('div', { class: 'composer-wrap' });
   const dock = h('div', { class: 'dock' });
   const strip = h('div', { class: 'attach-strip', hidden: true });
@@ -95,38 +97,7 @@ export function createComposer() {
   });
 
   // ------------------------------------------------------------ menús
-  const modelMenu = (anchor) => {
-    const search = h('input', { class: 'menu-search', placeholder: 'Buscar modelo…', type: 'text' });
-    const body = h('div');
-    const draw = () => {
-      clear(body);
-      const q = search.value.trim().toLowerCase();
-      for (const provider of ['claude', 'codex', 'gemini']) {
-        const models = state.models.filter(m => (m.provider || 'claude') === provider && (!q || (m.name + m.id).toLowerCase().includes(q)));
-        if (!models.length) continue;
-        const connected = provider === 'claude' || state.providers[provider]?.loggedIn;
-        body.append(h('div', { class: 'menu-head' }, PROVIDER_LABEL[provider] + (connected ? '' : ' · sin conectar')));
-        for (const m of models.slice(0, 14)) {
-          body.append(h('button', { class: `menu-item${m.id === currentModelId() ? ' selected' : ''}`, type: 'button', disabled: !connected,
-            onclick: () => { setPref('model', m.id); closePopover(); } },
-            providerMark(provider), h('span', { class: 'menu-label' }, shortName(m.name)), m.tag && provider === 'claude' ? h('span', { class: 'menu-hint' }, m.tag) : null,
-            m.id === currentModelId() ? icon('check', 'menu-check') : null));
-        }
-      }
-      const levels = effortLevelsFor(currentModelId());
-      if (levels.length && !q) {
-        body.append(h('div', { class: 'menu-sep' }), h('div', { class: 'menu-head' }, 'Esfuerzo'),
-          h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '2px 8px 8px' } },
-            ['auto', ...levels].map(l => h('button', { class: `btn-sm${(state.prefs.effort === l || (l === 'auto' && !levels.includes(state.prefs.effort))) ? ' btn-primary' : ''}`, type: 'button',
-              onclick: () => { setPref('effort', l); draw(); } }, EFFORT_LABEL[l] || l))));
-      }
-    };
-    search.addEventListener('input', draw);
-    draw();
-    const pop = showPopover(anchor, h('div', null, search, body), { side: 'top', className: 'wide' });
-    search.focus();
-    return pop;
-  };
+  const modelMenu = (anchor) => openModelPicker(anchor);
 
   const modeMenu = (anchor) => showPopover(anchor, h('div', null,
     allowedModes().map(m => h('button', { class: `menu-item${m.id === state.prefs.mode ? ' selected' : ''}`, type: 'button', onclick: () => { setPref('mode', m.id); closePopover(); } },

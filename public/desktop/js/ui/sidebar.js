@@ -1,5 +1,5 @@
 import { h, clear, icon, monogram, providerMark, timeAgo, basename, showPopover, closePopover, menuItem } from '../dom.js';
-import { state, on, setUi, newThread, openSession, deleteSession, togglePin, sessionStatus, projectList, loadSessions, updateActions } from '../store.js';
+import { state, on, setUi, newThread, openSession, deleteSession, togglePin, sessionStatus, projectList, loadSessions, updateActions, logout } from '../store.js';
 import { skySvg } from './sky.js';
 import { openPalette, openSettings, openOrchestrator, openUsage, openFolderPicker, openDisplayName } from './dialogs.js';
 import { openWhatsNew } from './whatsnew.js';
@@ -132,24 +132,53 @@ function updatePill() {
     h('button', { class: 'icon-btn', type: 'button', title: 'Omitir esta versión', onclick: () => updateActions.skip(v) }, icon('x')));
 }
 
-// Versión instalada: abre las novedades (con un punto cuando hay una versión nueva)
-function versionChip() {
+// Pie de la barra lateral: la tarjeta de perfil (avatar con el estado de la conexión, nombre y versión) abre
+// el menú de la cuenta; a la derecha, los accesos rápidos.
+const CONN = { open: ['ok', 'Conectado'], connecting: ['wait', 'Conectando…'], closed: ['bad', 'Sin conexión'], unauthorized: ['bad', 'Sesión cerrada'] };
+
+function avatarFor(name) {
+  const url = state.profile?.avatarUrl;
+  const fallback = () => monogram(name || '?', 'profile-mono');
+  if (!url) return fallback();
+  const img = h('img', { class: 'profile-avatar', src: url, alt: '', referrerpolicy: 'no-referrer' });
+  img.addEventListener('error', () => img.replaceWith(fallback()));
+  return img;
+}
+
+function openAccountMenu(anchor) {
   const u = state.update;
-  if (!u?.current) return null;
-  const fresh = u.status === 'available' && u.latest;
-  return h('button', { class: `version-chip${fresh ? ' fresh' : ''}`, type: 'button', title: fresh ? `Novedades · disponible la v${u.latest.version}` : 'Novedades de Zer0Code', onclick: () => openWhatsNew() },
-    fresh ? h('span', { class: 'version-dot' }) : null, `v${u.current}`);
+  const fresh = u?.status === 'available' && u.latest;
+  showPopover(anchor, h('div', null,
+    h('div', { class: 'acct-menu-head' },
+      h('b', null, state.profile?.displayName || state.user?.username || ''),
+      h('span', null, `@${state.user?.username || ''}${state.user?.role === 'admin' ? ' · administrador' : ''}`)),
+    h('div', { class: 'menu-sep' }),
+    menuItem({ label: 'Cambiar nombre visible', icon: 'pencil', onClick: () => { closePopover(); openDisplayName(); } }),
+    menuItem({ label: 'Ajustes', icon: 'settings', onClick: () => { closePopover(); openSettings(); } }),
+    u?.current ? menuItem({ label: fresh ? `Novedades · v${u.latest.version} disponible` : 'Novedades', icon: 'zap', onClick: () => { closePopover(); openWhatsNew(); } }) : null,
+    h('div', { class: 'menu-sep' }),
+    menuItem({ label: 'Cerrar sesión', icon: 'log-out', danger: true, onClick: async () => { closePopover(); await logout(); } })),
+  { side: 'top', className: 'wide' });
 }
 
 function foot() {
-  const conn = { open: ['', 'Conectado'], connecting: ['wait', 'Conectando…'], closed: ['bad', 'Sin conexión'], unauthorized: ['bad', 'Sesión cerrada'] }[state.conn] || ['wait', ''];
+  const [connCls, connText] = CONN[state.conn] || ['wait', ''];
   const name = state.profile?.displayName || state.user?.username || '';
-  const avatar = state.profile?.avatarUrl ? h('img', { class: 'profile-avatar', src: state.profile.avatarUrl, alt: '', referrerpolicy: 'no-referrer', onerror: event => event.currentTarget.remove() }) : null;
+  const u = state.update;
+  const fresh = u?.status === 'available' && u.latest;
+  const sub = h('span', { class: 'profile-sub' },
+    connCls === 'ok' ? null : h('span', { class: `profile-conn ${connCls}` }, connText),
+    connCls === 'ok' && u?.current ? `Zer0Code v${u.current}` : null,
+    connCls === 'ok' && !u?.current ? connText : null,
+    fresh ? h('span', { class: 'profile-new' }, ' · nueva versión') : null);
+  const card = h('button', { class: 'profile-card', type: 'button', title: name, onclick: () => openAccountMenu(card) },
+    h('span', { class: 'profile-pic' }, avatarFor(name), h('span', { class: `presence ${connCls}`, title: connText })),
+    h('span', { class: 'profile-text' }, h('span', { class: 'profile-name truncate' }, name), sub),
+    icon('chevron-up', 'profile-chev'));
   return h('div', { class: 'sidebar-foot' },
-    h('button', { class: 'icon-btn', type: 'button', title: 'Ajustes', onclick: openSettings }, icon('settings')),
-    h('button', { class: 'icon-btn', type: 'button', title: 'Orquestador de agentes', onclick: openOrchestrator }, icon('orch')),
-    h('button', { class: 'icon-btn', type: 'button', title: 'Uso y gasto', onclick: openUsage }, icon('chart')),
-    versionChip(),
-    h('span', { class: 'grow' }),
-    h('button', { class: 'conn profile-name truncate', type: 'button', title: 'Cambiar nombre visible', onclick: openDisplayName }, h('span', { class: `conn-dot ${conn[0]}`, title: conn[1] }), avatar, name));
+    card,
+    h('div', { class: 'foot-actions' },
+      h('button', { class: 'icon-btn', type: 'button', title: 'Orquestador de agentes', onclick: openOrchestrator }, icon('orch')),
+      h('button', { class: 'icon-btn', type: 'button', title: 'Uso y gasto', onclick: openUsage }, icon('chart')),
+      h('button', { class: 'icon-btn', type: 'button', title: 'Ajustes', onclick: openSettings }, icon('settings'))));
 }

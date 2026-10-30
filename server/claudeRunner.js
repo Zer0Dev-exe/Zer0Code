@@ -286,6 +286,36 @@ export function getClaudeAuthStatus(clientApiKey = null) {
  * @param {function} options.onDone - Callback when completed
  * @param {function} options.onError - Callback on error
  */
+/** Nombre de la carpeta de Claude Code para un directorio de trabajo: /home/a/b.c -> -home-a-b-c */
+export function claudeProjectSlug(dir) {
+  return String(dir).replace(/[^a-zA-Z0-9]/g, '-');
+}
+
+/**
+ * Copia la sesión `sessionId` a la carpeta de proyecto de `cwd` si está en otra (la conversación se movió de
+ * proyecto). Sin esto, --resume no la encuentra. Devuelve true si la ha copiado.
+ */
+export function ensureSessionInProject(configDir, sessionId, cwd) {
+  try {
+    if (!/^[\w-]+$/.test(sessionId)) return false;
+    const projects = path.join(configDir, 'projects');
+    const target = path.join(projects, claudeProjectSlug(cwd));
+    const file = `${sessionId}.jsonl`;
+    if (fs.existsSync(path.join(target, file)) || !fs.existsSync(projects)) return false;
+    for (const entry of fs.readdirSync(projects, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const source = path.join(projects, entry.name, file);
+      if (!fs.existsSync(source)) continue;
+      fs.mkdirSync(target, { recursive: true });
+      fs.copyFileSync(source, path.join(target, file));
+      return true;
+    }
+  } catch (err) {
+    console.warn('No se pudo trasladar la sesión de Claude:', err.message);
+  }
+  return false;
+}
+
 export function executeTask({
   prompt,
   workspace,
@@ -370,6 +400,8 @@ export function executeTask({
           env: {
             ZER0CODE_PERMISSION_URL: permissionBridge.url,
             ZER0CODE_PERMISSION_SECRET: permissionBridge.secret,
+            // Herramientas de Zer0Code para el modelo (crear un proyecto y mover la conversación a él)
+            ...(permissionBridge.actionUrl ? { ZER0CODE_ACTION_URL: permissionBridge.actionUrl } : {}),
             // Con la app de escritorio el servidor corre sobre el Node de Electron
             ...(process.env.ELECTRON_RUN_AS_NODE ? { ELECTRON_RUN_AS_NODE: process.env.ELECTRON_RUN_AS_NODE } : {})
           }
@@ -377,6 +409,8 @@ export function executeTask({
       }
     }), { encoding: 'utf-8', mode: 0o600 });
     args.push('--mcp-config', mcpConfigPath, '--permission-prompt-tool', PERMISSION_TOOL);
+    // Crear el proyecto no pide permiso: es la propia conversación organizándose
+    if (permissionBridge.actionUrl) args.push('--allowedTools', 'mcp__zer0code__create_project');
   }
 
   // Set model using valid Claude Code CLI alias
@@ -404,6 +438,8 @@ export function executeTask({
 
   // Resume previous session if provided
   if (sessionId) {
+    // Claude guarda cada sesión en la carpeta de su proyecto: si la conversación cambió de carpeta, se copia
+    ensureSessionInProject(cleanEnv.CLAUDE_CONFIG_DIR || process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), sessionId, targetDir);
     args.push('--resume', sessionId);
   }
 

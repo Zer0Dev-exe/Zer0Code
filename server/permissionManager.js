@@ -23,10 +23,25 @@ export function setPermissionNotifier(fn) {
  * ({ behavior: 'allow' | 'deny', ... }) o null para preguntar como siempre. Lo usa el revisor
  * del orquestador, que trabaja sin nadie delante y solo puede leer.
  */
-export function registerTask({ owner, chatId, check = () => null, auto = null }) {
+export function registerTask({ owner, chatId, check = () => null, auto = null, actions = null }) {
   const secret = crypto.randomBytes(24).toString('hex');
-  tasks.set(secret, { owner, chatId, check, auto });
+  tasks.set(secret, { owner, chatId, check, auto, actions });
   return secret;
+}
+
+/**
+ * Herramientas propias de Zer0Code (p. ej. crear un proyecto) llamadas desde el servidor MCP de la tarea.
+ * Solo las tareas registradas con `actions` (el desarrollador, no el revisor) pueden usarlas.
+ */
+export async function runTaskAction(secret, name, args) {
+  const task = tasks.get(secret);
+  const action = task?.actions?.[name];
+  if (!action) return { ok: false, error: 'Herramienta no disponible en esta tarea.' };
+  try {
+    return { ok: true, ...(await action(args && typeof args === 'object' ? args : {})) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 /**

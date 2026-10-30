@@ -1,11 +1,13 @@
 // Servidor MCP mínimo (stdio, sin dependencias) que Claude Code usa como --permission-prompt-tool.
 // Cuando el CLI necesita permiso para una herramienta, llama a `approve`; aquí se reenvía la petición
 // al servidor de Zer0Code, que la muestra en la web y espera la respuesta del usuario.
+// Con ZER0CODE_ACTION_URL también ofrece herramientas de Zer0Code al modelo, como `create_project`.
 import http from 'http';
 import readline from 'readline';
 
 const CALLBACK_URL = process.env.ZER0CODE_PERMISSION_URL;
 const SECRET = process.env.ZER0CODE_PERMISSION_SECRET;
+const ACTION_URL = process.env.ZER0CODE_ACTION_URL;
 
 const TOOL = {
   name: 'approve',
@@ -21,8 +23,51 @@ const TOOL = {
   }
 };
 
+const PROJECT_TOOL = {
+  name: 'create_project',
+  description: 'Crea un proyecto nuevo de Zer0Code y mueve esta conversación a él. Úsala cuando el usuario pida crear algo nuevo '
+    + '(una app, una web, un juego…) y la conversación no esté ya en la carpeta de proyecto adecuada. Sin `folder` crea una '
+    + 'carpeta nueva en la carpeta de proyectos con git, README.md y un primer commit; con `folder` usa esa carpeta existente. '
+    + 'Devuelve la ruta del proyecto: a partir de ahí trabaja en ella con rutas absolutas (y cd en la terminal).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'Nombre corto y claro del proyecto, por ejemplo «App de notas»' },
+      description: { type: 'string', description: 'Una o dos frases sobre el proyecto (va al README)' },
+      folder: { type: 'string', description: 'Opcional: ruta absoluta de una carpeta existente que usar como proyecto' }
+    },
+    required: ['name']
+  }
+};
+
 function send(message) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...message }) + '\n');
+}
+
+function postJson(url, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload);
+    const req = http.request(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), 'x-zer0code-secret': SECRET }
+    }, (res) => {
+      let data = '';
+      res.setEncoding('utf-8');
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); } catch { reject(new Error('Respuesta no válida del servidor de Zer0Code.')); }
+      });
+    });
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+async function createProject(args) {
+  if (!ACTION_URL || !SECRET) throw new Error('Esta tarea no puede crear proyectos.');
+  const result = await postJson(ACTION_URL, { action: 'create_project', args });
+  if (!result?.ok) throw new Error(result?.error || 'No se pudo crear el proyecto.');
+  return result;
 }
 
 // http en vez de fetch: la espera puede durar minutos y fetch corta a los 5 min sin cabeceras
@@ -75,8 +120,21 @@ async function handle(msg) {
     case 'ping':
       return send({ id, result: {} });
     case 'tools/list':
-      return send({ id, result: { tools: [TOOL] } });
+      return send({ id, result: { tools: ACTION_URL ? [TOOL, PROJECT_TOOL] : [TOOL] } });
     case 'tools/call': {
+      if (params?.name === PROJECT_TOOL.name && ACTION_URL) {
+        try {
+          const r = await createProject(params.arguments || {});
+          const lines = [
+            `Proyecto «${r.name}» ${r.created ? 'creado' : 'elegido'} en ${r.dir}. Esta conversación ya está en ese proyecto.`,
+            r.created ? (r.git ? (r.commitError ? `Repositorio git creado, pero el primer commit falló: ${r.commitError}` : 'Tiene git (rama main), README.md y un primer commit.') : 'No se pudo iniciar git.') : null,
+            `Trabaja a partir de ahora en ${r.dir}: usa rutas absolutas y, en la terminal, entra antes con cd "${r.dir}".`
+          ].filter(Boolean);
+          return send({ id, result: { content: [{ type: 'text', text: lines.join('\n') }] } });
+        } catch (err) {
+          return send({ id, result: { isError: true, content: [{ type: 'text', text: err.message }] } });
+        }
+      }
       if (params?.name !== TOOL.name) {
         return send({ id, error: { code: -32602, message: `Herramienta desconocida: ${params?.name}` } });
       }
