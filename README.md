@@ -19,13 +19,13 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/app-overview-retina.png" alt="Capturas actuales de Zer0Code: app de escritorio y pantalla de inicio móvil con el icono ZØ" width="100%">
+  <img src="docs/screenshots/app-overview.png" alt="Capturas actuales de Zer0Code: app de escritorio y barra lateral móvil con el icono ZØ" width="100%">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/app-desktop-dark-retina.png" alt="App de escritorio actual: hilos por proyecto, nuevo hilo, selector de modelo y revisor automático" width="100%">
+  <img src="docs/screenshots/app-desktop-dark.png" alt="App de escritorio actual: hilos por proyecto, nuevo hilo, selector de modelo y revisor automático" width="100%">
 </p>
-<p align="center"><sub><b>La app de escritorio:</b> proyectos, hilos, modelos y revisión automática en una misma ventana. Capturas reales de la interfaz actual con hilos de ejemplo; no se han ejecutado tareas para generarlas.</sub></p>
+<p align="center"><sub><b>La app de escritorio:</b> proyectos, hilos, modelos y revisión automática en una misma ventana. Capturas reales de la versión 1.6.1 con hilos de ejemplo: cabecera propia, controles compactos y versión encima del perfil. No se han ejecutado tareas para generarlas.</sub></p>
 
 ---
 
@@ -46,12 +46,12 @@ Zer0Code es un orquestador de agentes con app de escritorio, web y móvil. Combi
 
 ## 📦 Descargar
 
-Descarga el instalador de tu sistema en la [**última versión**](https://github.com/Zer0Dev-exe/Zer0Code/releases/latest). Incluyen Node.js y Claude Code: no hace falta tener nada más instalado.
+Descarga el instalador de tu sistema en la [**última versión**](https://github.com/Zer0Dev-exe/Zer0Code/releases/latest). La app de escritorio incluye el servidor y el runtime de Node.js. Instala las herramientas de Claude Code, Codex y Gemini CLI desde **Ajustes** y vincula las cuentas que quieras usar. Los instaladores del servidor incluyen Node.js y Claude Code.
 
 | Sistema | Archivo | Qué instala |
 | :--- | :--- | :--- |
 | 🖥️ **App de escritorio** · Windows | `Zer0Code-Desktop-…-win-x64.exe` | La app con ventana propia, con el servidor dentro o conectada al tuyo |
-| 🖥️ **App de escritorio** · Linux | `Zer0Code-Desktop-…-linux-x86_64.AppImage` · `…-amd64.deb` · `…-arm64.deb` | Lo mismo, para x64 y ARM |
+| 🖥️ **App de escritorio** · Linux | `Zer0Code-Desktop-…-linux-x86_64.AppImage` · `…-linux-arm64.AppImage` · `…-amd64.deb` · `…-arm64.deb` | Lo mismo, para x64 y ARM |
 | 🖥️ **App de escritorio** · macOS (Apple Silicon) | `Zer0Code-Desktop-…-mac-arm64.dmg` | Lo mismo |
 | 🪟 **Windows 10 y 11** (x64) | `Zer0Code-Setup-…-x64.exe` | El servidor, con accesos en el menú Inicio |
 | 🐧 **Debian y Ubuntu** (x64 y ARM) | `zer0code_…_amd64.deb` · `zer0code_…_arm64.deb` | El servidor y el comando `zer0code` |
@@ -63,12 +63,12 @@ Cada versión trae un `SHA256SUMS.txt` para comprobar que la descarga está inta
 <details>
 <summary><b>🖥️ App de escritorio</b></summary>
 
-Es una interfaz propia pensada para orquestar agentes, al estilo de [T3 Code](https://github.com/pingdotgg/t3code): hilos en la barra lateral agrupados por proyecto, línea de tiempo del trabajo del agente, tarjetas de revisión de otro modelo y un panel de cambios con el diff. Avisa con notificaciones del sistema cuando una tarea termina o pide permiso. Al abrirla elige:
+Es una interfaz propia de Zer0Code pensada para orquestar agentes: cabecera con identidad turquesa, hilos en la barra lateral agrupados por proyecto, línea de tiempo del trabajo del agente, tarjetas de revisión de otro modelo y un panel de cambios con el diff. En la **1.6.1**, el botón **Crear hilo** y el avatar ocupan menos espacio; la versión aparece encima del perfil y abre las novedades al pulsarla. Avisa con notificaciones del sistema cuando una tarea termina o pide permiso. Al abrirla elige:
 
 - **Conectar con mi servidor**: escribe la dirección de tu Zer0Code (VPS, Tailscale, tu casa). Verás las mismas conversaciones que en la web y en el móvil, en tiempo real. Es lo más cómodo si ya tienes un servidor.
 - **Usar este equipo**: la app lleva el servidor dentro y no hay que montar nada. Tus chats y cuentas se quedan en este equipo. Con **Compartir en mi red**, el móvil o otro equipo de la misma Wi-Fi entra a esos mismos chats (menú *Zer0Code → Dirección para el móvil*).
 
-En el modo local, cerrar la ventana la deja en la bandeja del sistema para que las tareas sigan; *Salir* detiene el servidor. Vincula tus cuentas desde *Zer0Code → Vincular cuentas* (Claude, ChatGPT y Gemini). Para cambiar de modo: *Zer0Code → Cambiar de servidor*.
+En el modo local, cerrar la ventana la deja en la bandeja del sistema para que las tareas sigan; *Salir* detiene el servidor. Instala y gestiona las herramientas desde **Ajustes**, donde también puedes vincular tus cuentas de Claude, ChatGPT y Gemini. El menú *Zer0Code → Vincular cuentas* ofrece acceso a la vinculación. Para cambiar de modo: *Zer0Code → Cambiar de servidor*.
 
 Los datos viven en `%APPDATA%\Zer0Code` (Windows), `~/Library/Application Support/Zer0Code` (macOS) o `~/.config/Zer0Code` (Linux).
 
@@ -144,7 +144,7 @@ Cuando publicas un release en GitHub, la **app de escritorio** y la **app de And
 - Un release recién publicado no se ofrece hasta que CI ha subido los instaladores y `SHA256SUMS.txt` (tarda unos minutos).
 - Un APK solo se instala si está firmado con la misma clave que la app instalada (lo exige Android), y la app de escritorio descarta cualquier descarga cuyo hash no coincida.
 
-**Para sacar una versión:** sube `version` en `package.json`, crea el release con el tag `vX.Y.Z` y publícalo. El workflow *Instaladores* compila todo con esa versión y lo adjunta; las apps que tengan una versión anterior la ofrecerán.
+**Para sacar una versión:** prepara una rama y una PR con los cambios, actualiza las versiones de `package.json` y `desktop/package.json`, sus archivos de bloqueo y los metadatos del cliente. Antes de publicar, configura los secretos de GitHub `ANDROID_KEYSTORE_BASE64` (el keystore de firma en base64) y `ANDROID_KEYSTORE_PASSWORD` (su contraseña). Conserva la misma clave de firma para que Android permita actualizar las instalaciones existentes. Tras pasar las comprobaciones y fusionar la PR, publica el release con el tag `vX.Y.Z`. El workflow *Instaladores* compila los paquetes y adjunta `SHA256SUMS.txt`; comprueba que termina y que están todos los archivos antes de dar la versión por lista.
 
 > [!NOTE]
 > El servidor (web) no se actualiza por esta vía: el VPS o el PC donde corre se actualiza con `git pull` o con el instalador correspondiente. La web y el móvil (PWA) siempre muestran la versión que sirve tu servidor.
@@ -172,7 +172,7 @@ Abre **http://localhost:5050** y entra con `admin` / `zer0code`. La primera vez 
 ## 📱 En tu móvil, como una app más
 
 <p align="center">
-  <img src="docs/screenshots/app-mobile.png" alt="Interfaz móvil actual: inicio en tema claro, conversaciones en tema oscuro y ajustes de app y notificaciones" width="100%">
+  <img src="docs/screenshots/app-mobile.png" alt="Interfaz móvil actual: conversaciones en tema oscuro y ajustes de app y notificaciones" width="100%">
 </p>
 
 - **Se instala desde el navegador.** En Android (Chrome): ⋮ → *Instalar aplicación*. En iPhone (Safari): Compartir → *Añadir a pantalla de inicio*.
@@ -195,7 +195,9 @@ Un modelo desarrolla y otro lo revisa **a la vez**. Se maneja desde la **app de 
 - **Corregir solo** (opcional). Si el revisor pide cambios, el desarrollador los aplica como un turno nuevo, hasta N rondas. Si no cree que algo sea un problema, lo explica en vez de cambiarlo.
 - **El revisor solo lee.** Corre en solo lectura: no puede tocar tus archivos ni ejecutar nada que los cambie. Recuerda lo que ya señaló en rondas anteriores.
 
-**Qué modelos usa (los elige Zer0Code):** el desarrollador es el Claude por defecto del catálogo (Opus) con esfuerzo alto; el revisor, el mejor modelo de ChatGPT que publique Codex, también con esfuerzo alto. Son de **familias distintas a propósito**: los fallos de un modelo no suelen coincidir con los del otro, que es lo que hace útil una segunda opinión. Si ChatGPT no está conectado, revisa Gemini; y si tampoco, un Claude Sonnet (mejor que nada, pero con el mismo punto ciego). Nada está fijado a un id: se calcula con el catálogo vivo, así que sigue valiendo cuando salgan modelos nuevos. Puedes elegir otro revisor en los ajustes o pulsar *Usar los modelos que recomienda Zer0Code*.
+**Qué modelos usa (los elige Zer0Code):** para desarrollar recomienda el Claude predeterminado del catálogo; si no hay uno, busca un Opus o usa la primera entrada. Para revisar prioriza ChatGPT si está conectado y tiene modelos disponibles; después Gemini y, como alternativa, Claude Sonnet o el propio desarrollador. En ChatGPT y Gemini elige el modelo marcado como predeterminado por el catálogo o, si no existe, su primera entrada. Recomienda esfuerzo alto cuando el modelo lo admite.
+
+La recomendación automática tiene en cuenta la conexión de ChatGPT y Gemini para elegir proveedor. Usar familias distintas aporta una segunda opinión. El catálogo también puede mostrar modelos de proveedores «sin conectar»: el selector de modelos permite elegirlos, pero necesitas vincular la cuenta para ejecutarlos. Los nombres de las capturas corresponden al entorno de demostración; tu lista depende del catálogo y de la versión de cada CLI. Puedes elegir otro revisor en los ajustes o pulsar *Usar los modelos que recomienda Zer0Code*.
 
 <table>
   <tr>
@@ -237,7 +239,7 @@ Elige cuánta libertad le das en cada momento:
   <img src="docs/screenshots/app-themes.png" alt="Capturas actuales de la app de escritorio en tema claro y oscuro" width="100%">
 </p>
 
-Interfaz propia de Zer0Code, con icono ZØ, tonos neutros y temas claro y oscuro. En la web y el móvil puedes personalizar el acento y la tipografía. Mientras el agente trabaja ves cómo piensa (razonamiento desplegable), cada herramienta que usa y el diff de cada cambio, en tiempo real.
+Interfaz propia de Zer0Code, con icono ZØ, cabecera y acento turquesa en el escritorio, tonos neutros y temas claro y oscuro. En la web y el móvil puedes personalizar el acento y la tipografía. Mientras el agente trabaja ves cómo piensa (razonamiento desplegable), cada herramienta que usa y el diff de cada cambio, en tiempo real.
 
 ---
 
@@ -412,13 +414,13 @@ Zer0Code/
 ## 🛠️ Compilar la app de escritorio
 
 ```bash
-bash packaging/stage-app.sh dist/stage --no-runtime   # el servidor y los CLIs que van dentro
+bash packaging/stage-app.sh dist/stage --no-runtime --no-ai-tools  # prepara el servidor para Electron
 cd desktop && npm ci
 npm start                                              # probar (usa el servidor del repositorio)
 npx electron-builder                                   # genera los instaladores en dist/desktop
 ```
 
-Se compila en el sistema para el que se empaqueta (Claude Code trae un binario por plataforma); el workflow *Instaladores* lo hace en cada release.
+Se compila en el sistema para el que se empaqueta; Electron aporta el runtime y las herramientas de los proveedores se instalan desde **Ajustes**. El workflow *Instaladores* genera los paquetes de cada plataforma en cada release.
 
 ---
 
