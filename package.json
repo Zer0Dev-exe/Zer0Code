@@ -1,6 +1,6 @@
 {
   "name": "zer0code",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Orquestador de agentes con app de escritorio, web y móvil",
   "main": "server/index.js",
   "type": "module",
