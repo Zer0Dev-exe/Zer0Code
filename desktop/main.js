@@ -329,7 +329,7 @@ function createWindow() {
     if (/^https?:\/\//.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });
-  win.webContents.on('will-navigate', (event, url) => {
+  const validateNavigation = (event, url) => {
     // Origen exacto (no un prefijo: «https://mi.servidor.evil.com» empieza por «https://mi.servidor») y, en
     // local, solo la pantalla de conexión: cualquier otra página recibiría el puente de la app
     const allowed = isConnectScreen(url) || isAppUrl(url);
@@ -337,7 +337,9 @@ function createWindow() {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) shell.openExternal(url);
     }
-  });
+  };
+  win.webContents.on('will-navigate', validateNavigation);
+  win.webContents.on('will-redirect', validateNavigation);
 
   // Con el servidor integrado, cerrar la ventana la oculta: las tareas siguen y los avisos llegan igualmente
   win.on('close', (event) => {
