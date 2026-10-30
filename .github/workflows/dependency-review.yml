@@ -1,0 +1,26 @@
+# Revisión de dependencias: en cada PR compara las dependencias nuevas o actualizadas con la base de
+# vulnerabilidades de GitHub y falla si alguna tiene una vulnerabilidad conocida de gravedad alta o crítica.
+name: Revisión de dependencias
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependencias del PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          # Resumen en el PR solo cuando hay algo que contar
+          comment-summary-in-pr: on-failure
