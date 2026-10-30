@@ -256,8 +256,7 @@ export async function openSettings() {
         h('button', { class: 'btn-sm', type: 'button', onclick: () => { dlg.close(); openWhatsNew(); } }, 'Novedades'),
         u.status === 'available'
           ? h('button', { class: 'btn-sm btn-primary', type: 'button', onclick: () => { updateActions.install(); } }, 'Actualizar')
-          : h('button', { class: 'btn-sm', type: 'button', disabled: u.status === 'checking' || u.status === 'downloading', onclick: () => updateActions.check() }, 'Buscar actualizaciones')),
-      null);
+          : h('button', { class: 'btn-sm', type: 'button', disabled: u.status === 'checking' || u.status === 'downloading', onclick: () => updateActions.check() }, 'Buscar actualizaciones')));
   };
   drawVersion();
   const offUpdate = on('update', drawVersion);

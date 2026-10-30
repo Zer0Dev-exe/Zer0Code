@@ -73,7 +73,7 @@ import {
 } from './modelsManager.js';
 
 import { refreshPricing, getPricingInfo } from './pricingManager.js';
-import { PROVIDERS, providerOf, getProviderModels, getProvidersStatus, executeWithProvider, setGeminiBackend } from './providers.js';
+import { PROVIDERS, providerOf, getProviderModels, getProvidersStatus, executeWithProvider, setGeminiBackend, waitForCodexCatalog, onCodexCatalogUpdated } from './providers.js';
 import {
   summarizeResultCost,
   recordUsage,
@@ -468,7 +468,8 @@ app.delete('/api/users/:username', requireAuth, requireAdmin, (req, res) => {
 // --------------------------------------------------------------------------
 // Application Endpoints (Protected by Auth)
 // --------------------------------------------------------------------------
-app.get('/api/status', requireAuth, (req, res) => {
+app.get('/api/status', requireAuth, async (req, res) => {
+  await waitForCodexCatalog();
   const clientKey = req.headers['x-claude-api-key'] || req.query.apiKey || null;
   const appMode = getAppMode();
   const auth = getClaudeAuthStatus(clientKey);
@@ -512,8 +513,13 @@ function catalog(claudeModels) {
   return [...withPricing(claudeModels), ...getProviderModels()];
 }
 
+onCodexCatalogUpdated(() => {
+  broadcast({ type: 'models_updated', models: catalog(getAvailableModels()), defaultModel: getDefaultModelId() });
+});
+
 // Dynamic Models Management Endpoints
-app.get('/api/models', requireAuth, (req, res) => {
+app.get('/api/models', requireAuth, async (req, res) => {
+  await waitForCodexCatalog();
   res.json({
     success: true,
     models: catalog(getAvailableModels()),

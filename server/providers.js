@@ -7,6 +7,7 @@ import { executeCodexTask, getCodexBinary } from './codexRunner.js';
 import { executeGeminiTask, getGeminiBinary } from './geminiRunner.js';
 import { geminiPackageDir } from './toolsManager.js';
 import { executeAgyTask, getAgyBinary, hasAgy } from './agyRunner.js';
+import { readCodexCatalog } from './codexCatalog.js';
 
 // Proveedores: cada uno usa la suscripción de su CLI oficial (Claude Code, Codex, Gemini CLI)
 export const PROVIDERS = {
@@ -56,29 +57,37 @@ export function providerOf(modelId) {
 // --------------------------------------------------------------------------
 // Catálogo de modelos de ChatGPT (lo publica Codex) y de Gemini
 // --------------------------------------------------------------------------
-const CODEX_FALLBACK = [{ slug: 'gpt-5.5', display_name: 'GPT-5.5', supported_reasoning_levels: ['low', 'medium', 'high', 'xhigh'] }];
 const CODEX_REFRESH_MS = 60 * 60 * 1000;
 let codexCatalog = null;
 let codexCatalogAt = 0;
+let codexRefresh = null;
+const codexListeners = new Set();
+
+export function onCodexCatalogUpdated(listener) {
+  codexListeners.add(listener);
+  return () => codexListeners.delete(listener);
+}
 
 function refreshCodexCatalog() {
-  if (Date.now() - codexCatalogAt < CODEX_REFRESH_MS) return;
-  codexCatalogAt = Date.now();
-  execFile(getCodexBinary(), ['debug', 'models'], { timeout: 30000, maxBuffer: 8 * 1024 * 1024, shell: process.platform === 'win32' }, (err, stdout) => {
-    if (err) return;
-    try {
-      const parsed = JSON.parse(stdout);
-      const list = (parsed.models || parsed).filter(m => m.visibility === 'list');
-      if (list.length) codexCatalog = list;
-    } catch {
-      // se queda el catálogo anterior
-    }
-  });
+  if (codexRefresh) return codexRefresh;
+  if (Date.now() - codexCatalogAt < (codexCatalog ? CODEX_REFRESH_MS : 30000)) return Promise.resolve();
+  codexRefresh = readCodexCatalog(getCodexBinary()).then(list => {
+    const changed = JSON.stringify(list) !== JSON.stringify(codexCatalog);
+    codexCatalog = list;
+    codexCatalogAt = Date.now();
+    if (changed) for (const listener of codexListeners) listener();
+  }).catch(error => {
+    codexCatalogAt = codexCatalog ? Date.now() - CODEX_REFRESH_MS + 30000 : Date.now();
+    console.warn(`[modelos] No se pudo cargar el catálogo de Codex: ${error.message}`);
+  }).finally(() => { codexRefresh = null; });
+  return codexRefresh;
 }
+
+export const waitForCodexCatalog = () => refreshCodexCatalog();
 
 function codexModels() {
   refreshCodexCatalog();
-  return (codexCatalog || CODEX_FALLBACK).map((m, i) => ({
+  return (codexCatalog || []).map((m, i) => ({
     id: m.slug,
     name: m.display_name || m.slug,
     tag: 'ChatGPT',
@@ -86,9 +95,9 @@ function codexModels() {
     desc: m.description || 'Con tu suscripción de ChatGPT (Codex)',
     provider: 'codex',
     effortLevels: (m.supported_reasoning_levels || [])
-      .map(r => (typeof r === 'string' ? r : r.effort))
+      .map(r => (typeof r === 'string' ? r : r.reasoningEffort || r.effort))
       .filter(level => EFFORT_LEVELS.includes(level)),
-    ...(i === 0 ? { providerDefault: true } : {})
+    ...((m.isDefault || (i === 0 && !codexCatalog.some(model => model.isDefault))) ? { providerDefault: true } : {})
   }));
 }
 
