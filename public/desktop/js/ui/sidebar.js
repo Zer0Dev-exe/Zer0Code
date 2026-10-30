@@ -139,8 +139,7 @@ function updatePill() {
     h('button', { class: 'icon-btn', type: 'button', title: 'Omitir esta versión', onclick: () => updateActions.skip(v) }, icon('x')));
 }
 
-// Pie de la barra lateral: la tarjeta de perfil (avatar con el estado de la conexión, nombre y versión) abre
-// el menú de la cuenta; a la derecha, los accesos rápidos.
+// Pie de la barra lateral: versión encima del perfil y accesos rápidos a la derecha.
 const CONN = { open: ['ok', 'Conectado'], connecting: ['wait', 'Conectando…'], closed: ['bad', 'Sin conexión'], unauthorized: ['bad', 'Sesión cerrada'] };
 
 function avatarFor(name) {
@@ -174,18 +173,18 @@ function foot() {
   const u = state.update;
   const fresh = u?.status === 'available' && u.latest;
   const sub = h('span', { class: 'profile-sub' },
-    connCls === 'ok' ? null : h('span', { class: `profile-conn ${connCls}` }, connText),
-    connCls === 'ok' && u?.current ? `Zer0Code v${u.current}` : null,
-    connCls === 'ok' && !u?.current ? connText : null,
+    h('span', { class: `profile-conn ${connCls}` }, connText),
     fresh ? h('span', { class: 'profile-new' }, ' · nueva versión') : null);
   const card = h('button', { class: 'profile-card', type: 'button', title: name, onclick: () => openAccountMenu(card) },
     h('span', { class: 'profile-pic' }, avatarFor(name), h('span', { class: `presence ${connCls}`, title: connText })),
     h('span', { class: 'profile-text' }, h('span', { class: 'profile-name truncate' }, name), sub),
     icon('chevron-up', 'profile-chev'));
-  return h('div', { class: 'sidebar-foot' },
-    card,
-    h('div', { class: 'foot-actions' },
-      h('button', { class: 'icon-btn', type: 'button', title: 'Orquestador de agentes', onclick: openOrchestrator }, icon('orch')),
-      h('button', { class: 'icon-btn', type: 'button', title: 'Uso y gasto', onclick: openUsage }, icon('chart')),
-      h('button', { class: 'icon-btn', type: 'button', title: 'Ajustes', onclick: openSettings }, icon('settings'))));
+  return h('div', { class: 'sidebar-footer' },
+    u?.current ? h('button', { class: 'sidebar-version', type: 'button', title: 'Ver las novedades', onclick: openWhatsNew }, `Zer0Code v${u.current}`) : null,
+    h('div', { class: 'sidebar-foot' },
+      card,
+      h('div', { class: 'foot-actions' },
+        h('button', { class: 'icon-btn', type: 'button', title: 'Orquestador de agentes', onclick: openOrchestrator }, icon('orch')),
+        h('button', { class: 'icon-btn', type: 'button', title: 'Uso y gasto', onclick: openUsage }, icon('chart')),
+        h('button', { class: 'icon-btn', type: 'button', title: 'Ajustes', onclick: openSettings }, icon('settings')))));
 }
