@@ -28,8 +28,9 @@ function head() {
 
 function top() {
   const filtered = state.ui.filter !== 'all';
-  const filterBtn = h('button', { class: `icon-btn sidebar-icon-btn${filtered ? ' active' : ''}`, type: 'button', title: filtered ? `Proyecto: ${basename(state.ui.filter)}` : 'Filtrar por proyecto',
-    'aria-label': 'Filtrar por proyecto', onclick: () => openFilterMenu(filterBtn) }, icon('filter'), filtered ? h('span', { class: 'filter-dot' }) : null);
+  const filterLabel = filtered ? `Proyecto: ${basename(state.ui.filter)}` : 'Filtrar por proyecto';
+  const filterBtn = h('button', { class: `icon-btn sidebar-icon-btn${filtered ? ' active' : ''}`, type: 'button', title: filterLabel,
+    'aria-label': filterLabel, onclick: () => openFilterMenu(filterBtn) }, icon('filter'), filtered ? h('span', { class: 'filter-dot' }) : null);
   return h('div', { class: 'sidebar-top' },
     h('button', { class: 'sidebar-create', type: 'button', title: 'Nuevo hilo (Ctrl N)', onclick: () => newThread() },
       icon('plus'), h('span', null, 'Crear hilo'), h('span', { class: 'create-mark', 'aria-hidden': 'true' }, '↗')),
