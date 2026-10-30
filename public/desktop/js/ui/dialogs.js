@@ -2,7 +2,7 @@ import { h, clear, icon, providerMark, openDialog, toast, basename, timeAgo, esc
 import { api } from '../api.js';
 import {
   state, setUi, applyTheme, newThread, openSession, addProject, saveOrchestration, loadOrchestration, modelInfo, setPref, currentModelId,
-  effortLevelsFor, logout, projectList, loadStatus, updateActions, on, saveDisplayName
+  effortLevelsFor, logout, projectList, loadStatus, updateActions, on, saveDisplayName, toolFor, installTool, uninstallTool, loadTools
 } from '../store.js';
 
 import { openWhatsNew } from './whatsnew.js';
@@ -199,16 +199,45 @@ export async function openOrchestrator() {
 // Ajustes
 // --------------------------------------------------------------------------
 export async function openSettings() {
-  await loadStatus().catch(() => {});
+  await Promise.all([loadStatus().catch(() => {}), loadTools().catch(() => {})]);
   const desktop = window.Zer0CodeDesktop;
   const seg = h('div', { class: 'segmented' }, [['light', 'sun', 'Claro'], ['dark', 'moon', 'Oscuro'], ['system', 'monitor', 'Sistema']].map(([v, ic, label]) =>
     h('button', { type: 'button', class: state.ui.theme === v ? 'on' : '', onclick: () => { setUi({ theme: v }); applyTheme(); [...seg.children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); }, dataset: { v } }, icon(ic), label)));
 
-  const acct = (provider, name, ok, detail) => h('div', { class: 'acct' }, providerMark(provider),
-    h('div', { class: 'grow' }, name, h('small', null, ok ? (detail || 'Conectado') : 'Sin conectar')),
-    ok ? h('span', { class: 'badge ok' }, 'Conectado')
-      : (desktop?.linkAccount ? h('button', { class: 'btn-sm', type: 'button', onclick: () => desktop.linkAccount(provider) }, 'Vincular…')
-        : h('span', { class: 'hint' }, provider === 'codex' ? 'codex login' : provider === 'gemini' ? 'gemini login' : 'claude auth login')));
+  // Cada cuenta necesita su herramienta (Claude Code, Codex, Gemini CLI): si no está, se instala desde aquí
+  const acct = (provider, name, ok, detail) => {
+    const tool = toolFor(provider);
+    if (tool && !tool.installed) {
+      const busy = tool.installing;
+      return h('div', { class: 'acct tool-row' }, providerMark(provider),
+        h('div', { class: 'grow' }, name,
+          h('small', null, busy ? `Instalando ${tool.label}… ${tool.progress || 0}%` : tool.error ? `Error: ${tool.error}` : `${tool.label} no está instalado · unos ${tool.sizeMB} MB`),
+          busy ? h('span', { class: 'tool-bar' }, h('i', { style: { width: `${tool.progress || 0}%` } })) : null),
+        state.canManageTools
+          ? h('button', { class: 'btn-sm btn-primary', type: 'button', disabled: busy, onclick: () => installTool(tool.id).catch(err => toast(err.message, 'error')) },
+            busy ? icon('loader', 'spin') : icon('arrow-up'), busy ? 'Instalando' : tool.error ? 'Reintentar' : 'Instalar')
+          : h('span', { class: 'hint' }, 'Pide al administrador que lo instale'));
+    }
+    const removable = tool?.source === 'app' && state.canManageTools;
+    return h('div', { class: 'acct' }, providerMark(provider),
+      h('div', { class: 'grow' }, name, h('small', null, (ok ? (detail || 'Conectado') : 'Sin conectar') + (tool?.version ? ` · ${tool.label} ${tool.version}` : ''))),
+      removable ? h('button', { class: 'btn-sm btn-ghost', type: 'button', title: `Desinstalar ${tool.label} (libera unos ${tool.sizeMB} MB)`,
+        onclick: () => { if (confirm(`¿Desinstalar ${tool.label}? Podrás volver a instalarlo desde aquí.`)) uninstallTool(tool.id).catch(err => toast(err.message, 'error')); } }, icon('trash')) : null,
+      ok ? h('span', { class: 'badge ok' }, 'Conectado')
+        : (desktop?.linkAccount ? h('button', { class: 'btn-sm', type: 'button', onclick: () => desktop.linkAccount(provider) }, 'Vincular…')
+          : h('span', { class: 'hint' }, provider === 'codex' ? 'codex login' : provider === 'gemini' ? 'gemini login' : 'claude auth login')));
+  };
+  const accounts = h('div', { class: 'field' });
+  const drawAccounts = () => {
+    clear(accounts);
+    accounts.append(h('span', { class: 'label' }, 'Cuentas del servidor'),
+      acct('claude', 'Claude', !!state.authInfo?.loggedIn, state.authInfo?.email),
+      acct('codex', 'ChatGPT (Codex)', !!state.providers.codex?.loggedIn),
+      acct('gemini', 'Gemini', !!state.providers.gemini?.loggedIn));
+  };
+  drawAccounts();
+  const offTools = on('tools', drawAccounts);
+  const offStatus = on('status', drawAccounts);
 
   const notif = 'Notification' in window ? h('div', { class: 'acct' }, icon('eye'), h('div', { class: 'grow' }, 'Notificaciones del sistema', h('small', null, 'Avisos cuando una tarea termina o necesita tu permiso')),
     Notification.permission === 'granted' ? h('span', { class: 'badge ok' }, 'Activadas')
@@ -234,13 +263,10 @@ export async function openSettings() {
   const offUpdate = on('update', drawVersion);
 
   const dlg = openDialog({
-    title: 'Ajustes', width: 520, onClose: offUpdate,
+    title: 'Ajustes', width: 520, onClose: () => { offUpdate(); offTools(); offStatus(); },
     body: [
       h('div', { class: 'field' }, h('span', { class: 'label' }, 'Apariencia'), seg),
-      h('div', { class: 'field' }, h('span', { class: 'label' }, 'Cuentas del servidor'),
-        acct('claude', 'Claude', !!state.authInfo?.loggedIn, state.authInfo?.email),
-        acct('codex', 'ChatGPT (Codex)', !!state.providers.codex?.loggedIn),
-        acct('gemini', 'Gemini', !!state.providers.gemini?.loggedIn)),
+      accounts,
       notif, verRow,
       state.user?.role === 'admin' ? h('div', { class: 'field' }, h('span', { class: 'label' }, 'Usuarios'),
         h('div', { class: 'acct' }, icon('shield'), h('div', { class: 'grow' }, 'Gestionar usuarios', h('small', null, 'Crear, editar y eliminar cuentas')),

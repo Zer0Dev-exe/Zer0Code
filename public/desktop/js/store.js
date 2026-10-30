@@ -23,6 +23,8 @@ export const state = {
   profile: null,
   conn: 'connecting',
   providers: {},
+  tools: null, // herramientas de IA (Claude Code, Codex, Gemini CLI): instaladas o no
+  canManageTools: false,
   models: [],
   defaultModel: null,
   appMode: 'Hoster',
@@ -173,6 +175,40 @@ export async function loadStatus() {
   if (!state.workspace) state.workspace = s.currentWorkspace || '';
   emit('status');
   emit('composer');
+}
+
+// --------------------------------------------------------------------------
+// Herramientas de IA opcionales: se instalan desde Ajustes
+// --------------------------------------------------------------------------
+export async function loadTools() {
+  const data = await api('/api/tools');
+  state.tools = data.tools || [];
+  state.canManageTools = !!data.canManage;
+  emit('tools');
+  emit('composer');
+}
+
+/** La herramienta que necesita un proveedor (Gemini con el motor de Antigravity no necesita Gemini CLI) */
+export function toolFor(provider) {
+  if (provider === 'gemini' && state.providers.gemini?.backend === 'agy') return null;
+  return state.tools?.find(t => t.id === provider) || null;
+}
+
+/** ¿Se puede usar este proveedor? (herramienta instalada y, si no es Claude, cuenta vinculada) */
+export function providerReady(provider) {
+  const tool = toolFor(provider);
+  if (tool && !tool.installed) return false;
+  return provider === 'claude' || !!state.providers[provider]?.loggedIn;
+}
+
+export async function installTool(id) {
+  const t = state.tools?.find(x => x.id === id);
+  if (t) { t.installing = true; t.progress = 0; t.error = null; emit('tools'); }
+  await api(`/api/tools/${id}/install`, { method: 'POST' });
+}
+
+export async function uninstallTool(id) {
+  await api(`/api/tools/${id}`, { method: 'DELETE' });
 }
 
 export async function loadSessions() {
@@ -426,6 +462,24 @@ export function handleEvent(data) {
       break;
     }
 
+    case 'tool_install': {
+      const t = state.tools?.find(x => x.id === data.id);
+      if (data.status === 'installing' && t) {
+        Object.assign(t, { installing: true, progress: data.progress || 0, error: null });
+        emit('tools');
+      } else if (data.status === 'error') {
+        if (t) Object.assign(t, { installing: false, progress: null, error: data.error });
+        emit('tools');
+        toast(`No se pudo instalar ${t?.label || data.id}: ${data.error}`, 'error');
+      } else if (data.status === 'done' || data.status === 'removed') {
+        if (data.status === 'done') toast(`${t?.label || data.id} instalado`);
+        // Con la herramienta nueva cambian las cuentas y el catálogo de modelos
+        loadTools().catch(() => {});
+        loadStatus().catch(() => {});
+      }
+      break;
+    }
+
     case 'sessions_changed':
       clearTimeout(sessionsTimer);
       sessionsTimer = setTimeout(async () => {
@@ -659,7 +713,7 @@ export const updateActions = {
 
 export async function startSession() {
   initUpdates();
-  await Promise.all([loadStatus(), loadOrchestration()]);
+  await Promise.all([loadStatus(), loadOrchestration(), loadTools().catch(() => {})]);
   await loadSessions();
   socket = connectSocket({
     onMessage: handleEvent,

@@ -252,7 +252,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Preparar el servidor que va dentro de la app
-        run: bash packaging/stage-app.sh "$PWD/dist/stage" --no-runtime
+        run: bash packaging/stage-app.sh "$PWD/dist/stage" --no-runtime --no-ai-tools
       - name: Instalar Electron y electron-builder
         working-directory: desktop
         run: npm ci --no-audit --no-fund

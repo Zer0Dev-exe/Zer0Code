@@ -1,5 +1,5 @@
 import { h, clear, icon, providerMark, showPopover, closePopover, toast } from '../dom.js';
-import { state, currentModelId, setPref, effortLevelsFor, modelInfo } from '../store.js';
+import { state, currentModelId, setPref, effortLevelsFor, modelInfo, providerReady, toolFor } from '../store.js';
 
 // Selector de modelo como el de T3 Code: una barra a la izquierda con favoritos y proveedores, buscador,
 // y cada modelo con su proveedor debajo. Los favoritos se eligen con la estrella y se abren con Ctrl 1…9.
@@ -16,7 +16,9 @@ const isMac = /mac/i.test(navigator.platform);
 const MOD = isMac ? '⌘' : 'Ctrl+';
 
 const providerOf = (m) => m.provider || 'claude';
-const connected = (provider) => provider === 'claude' || !!state.providers[provider]?.loggedIn;
+const connected = (provider) => providerReady(provider);
+// Por qué no se puede usar: falta instalar la herramienta o vincular la cuenta
+const blocker = (provider) => (toolFor(provider) && !toolFor(provider).installed ? 'sin instalar' : 'sin conectar');
 
 export function favorites() {
   try {
@@ -43,7 +45,8 @@ function toggleFavorite(id) {
 /** Elegir un modelo (comprueba que su proveedor está conectado) */
 function choose(m) {
   if (!connected(providerOf(m))) {
-    toast(`Conecta ${PROVIDERS.find(p => p.id === providerOf(m))?.label || providerOf(m)} en Ajustes para usar ${m.name}`, 'error');
+    const label = PROVIDERS.find(p => p.id === providerOf(m))?.label || providerOf(m);
+    toast(blocker(providerOf(m)) === 'sin instalar' ? `Instala ${label} en Ajustes para usar ${m.name}` : `Conecta ${label} en Ajustes para usar ${m.name}`, 'error');
     return false;
   }
   setPref('model', m.id);
@@ -100,7 +103,7 @@ export function openModelPicker(anchor) {
     }, content);
     rail.append(btn('fav', 'Favoritos', icon('star', 'mp-star-tab')));
     for (const p of providers) {
-      rail.append(btn(p.id, connected(p.id) ? p.label : `${p.label} · sin conectar`, providerMark(p.id)));
+      rail.append(btn(p.id, connected(p.id) ? p.label : `${p.label} · ${blocker(p.id)}`, providerMark(p.id)));
     }
   };
 
@@ -129,7 +132,7 @@ export function openModelPicker(anchor) {
         h('div', { class: 'mp-text' },
           h('span', { class: 'mp-name' }, m.name),
           h('span', { class: 'mp-sub' }, providerMark(provider), PROVIDERS.find(p => p.id === provider)?.label || provider,
-            on ? null : h('span', { class: 'mp-warn' }, '· sin conectar'),
+            on ? null : h('span', { class: 'mp-warn' }, `· ${blocker(provider)}`),
             m.tag && provider === 'claude' ? h('span', { class: 'mp-tag' }, m.tag) : null)),
         favIndex >= 0 && favIndex < 9 ? h('kbd', { class: 'mp-kbd' }, `${MOD}${favIndex + 1}`) : null,
         star,

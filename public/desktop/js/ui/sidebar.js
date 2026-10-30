@@ -58,11 +58,22 @@ function rowStatus(id) {
   return h('span', { class: `status-ic ${cls}`, title }, icon(ic));
 }
 
-function threadRow(sess, { compact = false } = {}) {
+// Insignia del proyecto: dos letras con un color estable por proyecto (como los iconos de proyecto de T3 Code)
+const BADGE_COLORS = ['#f2994a', '#56ccf2', '#6fcf97', '#bb6bd9', '#f2c94c', '#eb5757', '#2dd4bf', '#a5b4fc'];
+function projectBadge(name, dir) {
+  if (!dir) return h('span', { class: 'proj-badge none', title: 'Sin proyecto' });
+  const words = String(name).replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/);
+  const label = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
+  let hash = 0;
+  for (const ch of String(dir)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return h('span', { class: 'proj-badge', style: { color: BADGE_COLORS[hash % BADGE_COLORS.length] } }, label);
+}
+
+// Fila de conversación de dos líneas: proyecto y hora arriba; título y estado (o proveedor) abajo
+function threadRow(sess, { settled = false } = {}) {
   const proj = basename(sess.workspace) || 'Sin proyecto';
   const active = sess.id === state.activeId;
   const pinned = state.pins.has(sess.id);
-  const git = state.gitSummary[sess.workspace];
   const click = () => openSession(sess.id);
   const menu = (e) => {
     e.preventDefault();
@@ -71,25 +82,18 @@ function threadRow(sess, { compact = false } = {}) {
       menuItem({ label: pinned ? 'Desfijar' : 'Fijar arriba', icon: 'pin', onClick: () => { togglePin(sess.id); closePopover(); } }),
       menuItem({ label: 'Eliminar conversación', icon: 'trash', danger: true, onClick: async () => { closePopover(); if (confirm(`¿Eliminar «${sess.title}»?`)) deleteSession(sess.id); } })));
   };
+  const status = rowStatus(sess.id);
 
-  if (compact) {
-    return h('button', { class: `thread-row compact${active ? ' active' : ''}`, type: 'button', onclick: click, oncontextmenu: menu },
-      h('span', { class: 'thread-title truncate' }, sess.title), h('span', { class: 'when' }, timeAgo(sess.updatedAt)));
-  }
-
-  return h('div', { class: `thread-row${active ? ' active' : ''}`, role: 'button', tabindex: 0, onclick: click, oncontextmenu: menu,
-    onkeydown: (e) => { if (e.key === 'Enter') click(); } },
+  return h('div', { class: `thread-row${active ? ' active' : ''}${settled ? ' settled' : ''}`, role: 'button', tabindex: 0, onclick: click, oncontextmenu: menu,
+    title: `${sess.title}\n${sess.workspace || ''}`, onkeydown: (e) => { if (e.key === 'Enter') click(); } },
     h('div', { class: 'thread-l1' },
-      monogram(proj), h('span', { class: 'proj truncate' }, proj), h('span', { class: 'spacer' }),
-      h('button', { class: `icon-btn pin-btn${pinned ? ' on' : ''}`, type: 'button', title: pinned ? 'Desfijar' : 'Fijar', style: { width: '20px', height: '20px' },
+      projectBadge(proj, sess.workspace), h('span', { class: 'proj truncate' }, proj), h('span', { class: 'spacer' }),
+      h('button', { class: `icon-btn pin-btn${pinned ? ' on' : ''}`, type: 'button', title: pinned ? 'Desfijar' : 'Fijar',
         onclick: (e) => { e.stopPropagation(); togglePin(sess.id); } }, icon('pin')),
-      rowStatus(sess.id), h('span', { class: 'tabular' }, timeAgo(sess.updatedAt))),
-    h('div', { class: 'thread-title truncate' }, sess.title),
-    h('div', { class: 'thread-l3' },
-      git?.isRepo ? [icon('git-branch'), h('span', { class: 'truncate' }, git.branch)] : h('span', { class: 'truncate' }, sess.workspace || ''),
-      h('span', { class: 'spacer' }),
-      active && git?.isRepo && (git.additions || git.deletions) ? [h('span', { class: 'stat-add tabular' }, `+${git.additions}`), h('span', { class: 'stat-del tabular' }, `−${git.deletions}`)] : null,
-      sess.lastProvider ? providerMark(sess.lastProvider, 'row-provider') : null));
+      h('span', { class: 'when tabular' }, timeAgo(sess.updatedAt))),
+    h('div', { class: 'thread-l2' },
+      h('span', { class: 'thread-title truncate' }, sess.title),
+      status || (sess.lastProvider ? providerMark(sess.lastProvider, 'row-provider') : null)));
 }
 
 function list() {
@@ -108,7 +112,7 @@ function list() {
   if (done.length) {
     box.append(h('button', { class: `settled-head${state.ui.settledOpen ? ' open' : ''}`, type: 'button', onclick: () => setUi({ settledOpen: !state.ui.settledOpen }) },
       `Resueltos (${done.length})`, h('span', { class: 'line' }), icon('chevron-down')));
-    if (state.ui.settledOpen) done.slice(0, 80).forEach(s => box.append(threadRow(s, { compact: true })));
+    if (state.ui.settledOpen) done.slice(0, 80).forEach(s => box.append(threadRow(s, { settled: true })));
   }
   return box;
 }

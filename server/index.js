@@ -38,6 +38,7 @@ import {
   runTaskAction
 } from './permissionManager.js';
 import { createProject, projectToolHint, isProjectEdit } from './projectCreator.js';
+import { listTools, installTool, uninstallTool, setToolsNotifier, TOOL_IDS, toolAvailable, toolLabel } from './toolsManager.js';
 
 import {
   getClaudeAuthStatus,
@@ -247,6 +248,9 @@ function pushIfAway(username, payload) {
 }
 
 // Avisos de permiso: a la web abierta y, por push, al móvil aunque la app esté cerrada
+// Progreso de la instalación de herramientas: a todos (las cuentas dependen de ellas)
+setToolsNotifier((data) => broadcast(data));
+
 setPermissionNotifier((username, data) => {
   sendToUser(username, data);
   if (data.type === 'permission_request' && data.request) {
@@ -479,6 +483,28 @@ app.get('/api/status', requireAuth, (req, res) => {
     availableModels: catalog(getAvailableModels()),
     defaultModel: getDefaultModelId()
   });
+});
+
+// Herramientas de IA opcionales (Claude Code, Codex, Gemini CLI): se instalan desde Ajustes
+app.get('/api/tools', requireAuth, (req, res) => {
+  res.json({ tools: listTools(), canManage: req.user.role === 'admin' });
+});
+
+app.post('/api/tools/:id/install', requireAuth, requireAdmin, (req, res) => {
+  const id = req.params.id;
+  if (!TOOL_IDS.includes(id)) return res.status(404).json({ success: false, error: 'Herramienta desconocida' });
+  // La descarga sigue en segundo plano; el progreso llega por WebSocket (tool_install)
+  installTool(id).catch((err) => console.error(`No se pudo instalar ${id}:`, err.message));
+  res.json({ success: true });
+});
+
+app.delete('/api/tools/:id', requireAuth, requireAdmin, (req, res) => {
+  try {
+    uninstallTool(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
 });
 
 // Catálogo completo: modelos de Claude (con su tarifa) + los de ChatGPT y Gemini
@@ -819,6 +845,14 @@ function startTurn(user, params) {
   const modelId = model || getDefaultModelId();
   const provider = providerOf(modelId);
   const providerName = PROVIDERS[provider].name;
+
+  // La herramienta del proveedor es opcional (se instala desde Ajustes): avisar en vez de fallar al lanzarla
+  const neededTool = provider === 'gemini' && getProvidersStatus().gemini?.backend === 'agy' ? null : provider;
+  if (neededTool && TOOL_IDS.includes(neededTool) && !toolAvailable(neededTool)) {
+    const message = `${toolLabel(neededTool)} no está instalado en el servidor. Instálalo desde Ajustes → Cuentas del servidor para usar ${providerName}.`;
+    sendToUser(owner, { type: 'task_error', sessionId: sessionId || null, message: { role: 'assistant', status: 'error', error: message }, error: { message } });
+    return;
+  }
 
   // Get or create session
   let currentSession = sessionId ? getSession(sessionId, owner) : null;

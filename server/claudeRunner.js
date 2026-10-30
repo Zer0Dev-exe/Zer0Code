@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { DATA_DIR } from './paths.js';
+import { toolBinary } from './toolsManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,22 +14,8 @@ const projectRoot = path.resolve(__dirname, '..');
  * Detectar la ruta o comando del binario de Claude de forma multiplataforma (Windows / Linux / macOS)
  */
 export function getClaudeBinary() {
-  const isWin = process.platform === 'win32';
-  const binName = isWin ? 'claude.cmd' : 'claude';
-  const localBin = path.join(projectRoot, 'node_modules', '.bin', binName);
-  
-  if (fs.existsSync(localBin)) {
-    return localBin;
-  }
-
-  // Fallback si no tiene .cmd o en entornos tipo WSL / Cygwin
-  const localDirect = path.join(projectRoot, 'node_modules', '.bin', 'claude');
-  if (fs.existsSync(localDirect)) {
-    return localDirect;
-  }
-
-  // Fallback al comando global instalado en el sistema
-  return isWin ? 'claude.cmd' : 'claude';
+  // La instalada desde Ajustes, la de node_modules (desarrollo, VPS) o la del sistema
+  return toolBinary('claude');
 }
 
 /**

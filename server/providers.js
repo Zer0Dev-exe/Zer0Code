@@ -5,6 +5,7 @@ import path from 'path';
 import { executeTask, EFFORT_LEVELS } from './claudeRunner.js';
 import { executeCodexTask, getCodexBinary } from './codexRunner.js';
 import { executeGeminiTask, getGeminiBinary } from './geminiRunner.js';
+import { geminiPackageDir } from './toolsManager.js';
 import { executeAgyTask, getAgyBinary, hasAgy } from './agyRunner.js';
 
 // Proveedores: cada uno usa la suscripción de su CLI oficial (Claude Code, Codex, Gemini CLI)
@@ -108,12 +109,8 @@ let geminiCatalog = null;
 let geminiCatalogAt = 0;
 
 function geminiBundleDir() {
-  try {
-    const pkg = fs.realpathSync(path.join(path.dirname(getGeminiBinary()), '..', '@google', 'gemini-cli'));
-    return path.join(pkg, 'bundle');
-  } catch {
-    return null;
-  }
+  const pkg = geminiPackageDir();
+  return pkg ? path.join(pkg, 'bundle') : null;
 }
 
 /** Lee los modelos visibles de los modelDefinitions del bundle de Gemini CLI */

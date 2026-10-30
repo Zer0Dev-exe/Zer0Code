@@ -604,3 +604,28 @@ a.btn-sm { text-decoration: none; }
 .foot-actions { display: flex; align-items: center; gap: 2px; padding-left: 6px; border-left: 1px solid var(--border); }
 .acct-menu-head { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 6px; }
 .acct-menu-head b { font-size: 13.5px; font-weight: 600; } .acct-menu-head span { font-size: 12px; color: var(--muted-foreground); }
+
+/* Herramientas de IA sin instalar (Ajustes) */
+.tool-row small { color: var(--muted-foreground); }
+.tool-bar { display: block; height: 4px; margin-top: 6px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.tool-bar i { display: block; height: 100%; background: var(--primary); transition: width 0.25s; }
+
+/* Lista de conversaciones: filas de dos líneas (proyecto y hora; título y estado) */
+.thread-scroll { padding: 6px 8px 12px; }
+.thread-row { height: auto; min-height: 58px; gap: 4px; padding: 8px 10px; margin-bottom: 2px; border-radius: 10px; cursor: pointer; }
+.thread-row.active { background: var(--sidebar-row-active); border-color: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+.thread-l1 { height: 18px; gap: 7px; font-size: 12.5px; }
+.thread-l1 .proj { color: var(--muted-foreground); font-weight: 400; }
+.thread-l1 .when { font-size: 12px; color: var(--muted-foreground); flex-shrink: 0; }
+.thread-l2 { display: flex; align-items: center; gap: 8px; min-width: 0; height: 22px; }
+.thread-l2 .thread-title { flex: 1; min-width: 0; height: auto; font-size: 14px; font-weight: 400; line-height: 22px; color: var(--foreground); }
+.thread-row.active .thread-title { font-weight: 500; }
+.thread-l2 .row-provider { font-size: 14px; flex-shrink: 0; opacity: 0.9; }
+.thread-l2 .status-ic { font-size: 15px; flex-shrink: 0; }
+.thread-row.settled .thread-title { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
+.thread-row.settled .proj-badge { opacity: 0.75; }
+.pin-btn { width: 18px; height: 18px; font-size: 12px; }
+.proj-badge { display: inline-grid; place-items: center; flex-shrink: 0; width: 18px; height: 18px; border-radius: 5px;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent); font: 700 9.5px/1 var(--font-mono); letter-spacing: -0.02em; }
+.proj-badge.none { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--muted-foreground) 70%, transparent); width: 16px; height: 16px; }
+.settled-head { margin-top: 10px; font-size: 12.5px; }

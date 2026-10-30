@@ -8,15 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@anthropic-ai/claude-code':
-        specifier: ^2.1.308
-        version: 2.1.308
-      '@google/gemini-cli':
-        specifier: 0.65.0
-        version: 0.65.0
-      '@openai/codex':
-        specifier: 0.163.0
-        version: 0.163.0
       dotenv:
         specifier: ^18.0.8
         version: 18.0.8
@@ -29,6 +20,16 @@ importers:
       ws:
         specifier: ^8.22.0
         version: 8.22.0
+    optionalDependencies:
+      '@anthropic-ai/claude-code':
+        specifier: ^2.1.308
+        version: 2.1.308
+      '@google/gemini-cli':
+        specifier: 0.65.0
+        version: 0.65.0
+      '@openai/codex':
+        specifier: 0.163.0
+        version: 0.163.0
 
 packages:
 
@@ -524,6 +525,7 @@ snapshots:
       '@anthropic-ai/claude-code-linux-x64-musl': 2.1.308
       '@anthropic-ai/claude-code-win32-arm64': 2.1.308
       '@anthropic-ai/claude-code-win32-x64': 2.1.308
+    optional: true
 
   '@github/keytar@7.10.6':
     dependencies:
@@ -540,6 +542,7 @@ snapshots:
       '@lydell/node-pty-win32-arm64': 1.1.0
       '@lydell/node-pty-win32-x64': 1.1.0
       node-pty: 1.0.0
+    optional: true
 
   '@lydell/node-pty-darwin-arm64@1.1.0':
     optional: true
@@ -577,6 +580,7 @@ snapshots:
       '@openai/codex-linux-x64': '@openai/codex@0.163.0-linux-x64'
       '@openai/codex-win32-arm64': '@openai/codex@0.163.0-win32-arm64'
       '@openai/codex-win32-x64': '@openai/codex@0.163.0-win32-x64'
+    optional: true
 
   '@openai/codex@0.163.0-darwin-arm64':
     optional: true

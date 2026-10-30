@@ -523,6 +523,14 @@ ipcMain.handle('desktop:focus', () => { showWindow(); return true; });
 // Cuentas: Claude, ChatGPT (Codex) y Gemini se vinculan desde sus propios CLIs
 // ---------------------------------------------------------------------------
 function cliBinary(name) {
+  // Instalada desde Ajustes (el servidor apunta en su manifiesto dónde está el ejecutable)
+  try {
+    const dir = path.join(DATA_DIR, 'tools', name);
+    const { entry } = JSON.parse(fs.readFileSync(path.join(dir, 'zer0code-tool.json'), 'utf-8'));
+    if (entry && fs.existsSync(path.join(dir, entry))) return path.join(dir, entry);
+  } catch {
+    // no está instalada desde la app
+  }
   const root = app.isPackaged ? path.join(process.resourcesPath, 'app-server') : path.join(__dirname, '..');
   const file = path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? `${name}.cmd` : name);
   return fs.existsSync(file) ? file : name;

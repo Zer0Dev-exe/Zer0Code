@@ -16,7 +16,9 @@ const { compareVersions, pickAsset, summarizeReleases } = require('./updateLogic
 const REPO = 'Zer0Dev-exe/Zer0Code';
 const API_BASE = process.env.ZER0CODE_UPDATE_API_BASE || `https://api.github.com/repos/${REPO}`;
 const API = process.env.ZER0CODE_UPDATE_API || `${API_BASE}/releases/latest`;
-const CHECK_EVERY_MS = 4 * 60 * 60 * 1000;
+const CHECK_EVERY_MS = 30 * 60 * 1000;
+// Al volver a la ventana se comprueba otra vez, pero como mucho cada 10 minutos
+const FOCUS_CHECK_MIN_MS = 10 * 60 * 1000;
 const FIRST_CHECK_MS = 15 * 1000;
 const RELEASES_TTL_MS = 10 * 60 * 1000;
 const HEADERS = { 'User-Agent': 'Zer0Code-Desktop', Accept: 'application/vnd.github+json' };
@@ -250,6 +252,10 @@ function createUpdater({ getConfig, saveConfig, quit, logDir }) {
     setTimeout(() => check(), FIRST_CHECK_MS).unref?.();
     timer = setInterval(() => check(), CHECK_EVERY_MS);
     timer.unref?.();
+    // Una versión publicada con la app ya abierta se ve al volver a ella, sin esperar a la siguiente vuelta
+    app.on('browser-window-focus', () => {
+      if (['idle', 'uptodate'].includes(state.status) && Date.now() - (state.checkedAt || 0) > FOCUS_CHECK_MIN_MS) check();
+    });
   }
 
   return { state: () => ({ ...state }), check, install, skip, releases, dismissNotice, start };

@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { toolBinary } from './toolsManager.js';
 import { activeProcesses, writeTempAttachments, removeTempDir, releaseProcess } from './claudeRunner.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -10,8 +11,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
  * Binario de Codex CLI (el del proyecto; si no está, el global)
  */
 export function getCodexBinary() {
-  const local = path.join(projectRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'codex.cmd' : 'codex');
-  return fs.existsSync(local) ? local : 'codex';
+  return toolBinary('codex');
 }
 
 // Modos de la web -> sandbox de Codex (en `exec` no se puede preguntar, así que nunca pide aprobación)

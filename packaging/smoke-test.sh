@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prueba rápida de una instalación: arranca el servidor con datos temporales, comprueba que responde
-# y que el Claude Code incluido funciona. Uso: bash packaging/smoke-test.sh <node> <carpeta app>
+# y que el Claude Code incluido funciona (si lo lleva). Uso: bash packaging/smoke-test.sh <node> <carpeta app>
 set -euo pipefail
 
 NODE="$1"; APP="$2"
@@ -12,7 +12,8 @@ PORT=5091
 printf 'PORT=%s\nHOST=127.0.0.1\nAPP_NAME=Prueba\n' "$PORT" > "$WORK/.env"
 
 if [ -e "$APP/node_modules/.bin/claude.cmd" ]; then CLAUDE="$APP/node_modules/.bin/claude.cmd"; else CLAUDE="$APP/node_modules/.bin/claude"; fi
-echo "Claude Code: $("$CLAUDE" --version)"
+# La app de escritorio no lo lleva dentro: se instala desde Ajustes
+if [ -e "$CLAUDE" ]; then echo "Claude Code: $("$CLAUDE" --version)"; else echo "Claude Code: no incluido (se instala desde la app)"; fi
 
 ZER0CODE_DATA_DIR="$NATIVE_WORK/data" ZER0CODE_ENV_FILE="$NATIVE_WORK/.env" "$NODE" "$APP/server/index.js" > "$WORK/server.log" 2>&1 &
 PID=$!

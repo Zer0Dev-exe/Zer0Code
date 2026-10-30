@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { toolBinary } from './toolsManager.js';
 import { activeProcesses, writeTempAttachments, removeTempDir, releaseProcess } from './claudeRunner.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -10,8 +11,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
  * Binario de Gemini CLI (el del proyecto; si no está, el global)
  */
 export function getGeminiBinary() {
-  const local = path.join(projectRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'gemini.cmd' : 'gemini');
-  return fs.existsSync(local) ? local : 'gemini';
+  return toolBinary('gemini');
 }
 
 // Modos de la web -> modo de aprobación de Gemini (sin terminal, lo que necesita aprobación se deniega)
