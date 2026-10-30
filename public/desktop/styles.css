@@ -1,5 +1,4 @@
-/* Zer0Code escritorio — lenguaje visual de T3 Code (Nightly): lienzo casi negro, bordes de 6 % de blanco,
-   filas compactas, asistente sin burbuja y composer redondeado. */
+/* Zer0Code escritorio: espacio de trabajo con identidad propia y acento turquesa. */
 
 .profile-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .provider-usage-card { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-top: 8px; }
@@ -134,36 +133,46 @@ button:disabled { cursor: default; opacity: 0.5; }
 /* Las zonas no arrastrables deben ser explícitas: none por defecto no resta
    los rectángulos drag de elementos decorativos que sobresalen de la cabecera. */
 .is-desktop :is(.no-drag, button, input, textarea, select, a, label, [role="button"],
-  .sidebar-top, .sidebar-top *, .sidebar-stage, .sidebar-stage *,
+  .sidebar-top, .sidebar-top *,
   .palette, .palette *, .popover, .popover *, .dialog-overlay, .dialog-overlay *) {
   -webkit-app-region: no-drag;
 }
 
 /* ---------------------------------------------------------------- Sidebar */
-/* Solo la marca arrastra: el dibujo de 84px queda fuera de ese árbol y
-   no puede extender la zona nativa sobre los botones de la fila siguiente. */
-.sidebar-head { position: relative; height: 52px; flex-shrink: 0; }
-.sidebar-stage { position: absolute; inset: 0 0 auto 0; height: 84px; pointer-events: none; user-select: none;
-  mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%); }
-.sidebar-stage::after { content: ""; position: absolute; inset: 0;
-  background: linear-gradient(to bottom, transparent 0%, transparent 28%,
-    color-mix(in srgb, var(--sidebar) 10%, transparent) 40%, color-mix(in srgb, var(--sidebar) 30%, transparent) 52%,
-    color-mix(in srgb, var(--sidebar) 58%, transparent) 64%, color-mix(in srgb, var(--sidebar) 82%, transparent) 75%,
-    color-mix(in srgb, var(--sidebar) 96%, transparent) 85%, var(--sidebar) 93%); }
-.sidebar-stage svg { width: 100%; height: 100%; display: block; }
-.sidebar-brand { overflow: hidden; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 10px 0 10px; color: #fff; text-shadow: 0 1px 8px rgb(0 0 0 / 35%); }
-.plat-darwin .sidebar-brand { padding-left: 82px; }
-.sidebar-brand .logo { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; box-shadow: 0 0 0 1px rgb(255 255 255 / 25%), 0 4px 14px -2px rgb(0 0 0 / 50%); }
-.sidebar-brand .name { font-weight: 400; font-size: 16px; letter-spacing: -0.01em; opacity: 0.95; }
-.sidebar-brand .name b { font-weight: 700; }
-.sidebar-brand .stage { display: none; }
-.sidebar-brand .spacer { flex: 1; }
-.sidebar-brand .icon-btn { color: rgb(255 255 255 / 75%); }
-.sidebar-brand .icon-btn:hover { background: rgb(255 255 255 / 12%); color: #fff; }
-[data-theme="light"] .sidebar-brand { color: #fff; }
-
-.sidebar-top { padding: 0 8px; display: flex; flex-direction: column; gap: 4px; margin-top: 2px; position: relative; z-index: 1; }
+/* Identidad Zer0Code: marca tipográfica, firma lateral y acciones separadas. */
+.sidebar-head {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; min-height: 94px; padding: 22px 14px 20px 18px; flex-shrink: 0;
+}
+.sidebar-head::before {
+  content: ""; position: absolute; left: 0; top: 25px; bottom: 25px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--primary);
+}
+.sidebar-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.identity-logo { width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px; }
+.identity-wordmark { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.identity-name { font: 700 20px/1 var(--font-mono); letter-spacing: -1.2px; color: var(--foreground); white-space: nowrap; }
+.identity-name > span { font-weight: 400; color: var(--primary); }
+.identity-caption { font-size: 10px; line-height: 1.3; color: var(--muted-foreground); white-space: nowrap; }
+.identity-collapse { flex-shrink: 0; color: var(--muted-foreground); }
+.plat-darwin .sidebar-head { padding-top: 42px; min-height: 114px; }
+.plat-darwin .sidebar-head::before { top: 45px; }
+.sidebar-top { padding: 0 14px; display: flex; flex-direction: column; gap: 0; }
+.sidebar-create {
+  display: flex; align-items: center; gap: 9px; width: 100%; min-height: 40px;
+  padding: 9px 12px; border-radius: 10px; background: var(--primary); color: var(--primary-foreground);
+  font-size: 13px; font-weight: 600; text-align: left; transition: filter .15s;
+}
+.sidebar-create:hover { filter: brightness(1.08); }
+.sidebar-create .ic { font-size: 17px; }
+.create-mark { margin-left: auto; font-size: 18px; font-weight: 400; opacity: .7; }
+.sidebar-library { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 21px; }
+.library-label { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted-foreground); }
+.sidebar-top .search-row { margin-top: 5px; padding: 2px 4px 2px 8px; border: 1px solid var(--border); border-radius: 9px; }
+.sidebar-search { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; height: 30px; text-align: left; color: var(--muted-foreground); font-size: 11px; }
+.sidebar-search span:not(.ic) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sidebar-search:hover { color: var(--foreground); }
+.sidebar-search .ic { font-size: 15px; }
 .search-row, .filter-row { display: flex; align-items: center; gap: 2px; }
 .sidebar-icon-btn { position: relative; }
 .filter-dot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
