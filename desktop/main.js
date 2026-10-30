@@ -10,6 +10,7 @@ const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
+const { fileURLToPath } = require('url');
 const { createUpdater } = require('./updater');
 
 const APP_NAME = 'Zer0Code';
@@ -329,7 +330,9 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (event, url) => {
-    const allowed = url.startsWith('file://') || (currentOrigin() && url.startsWith(currentOrigin()));
+    // Origen exacto (no un prefijo: «https://mi.servidor.evil.com» empieza por «https://mi.servidor») y, en
+    // local, solo la pantalla de conexión: cualquier otra página recibiría el puente de la app
+    const allowed = isConnectScreen(url) || isAppUrl(url);
     if (!allowed) {
       event.preventDefault();
       if (/^https?:\/\//.test(url)) shell.openExternal(url);
@@ -343,6 +346,31 @@ function createWindow() {
     win.hide();
   });
   win.on('closed', () => { win = null; });
+}
+
+const CONNECT_FILE = path.join(__dirname, 'connect.html');
+const samePath = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+
+/** ¿Es la pantalla de conexión de la app (con o sin ?parámetros)? Se compara como ruta, no como texto */
+function isConnectScreen(url) {
+  try {
+    const raw = String(url || '');
+    if (!raw.startsWith('file:')) return false;
+    return samePath(path.resolve(fileURLToPath(raw.split(/[?#]/)[0])), path.resolve(CONNECT_FILE));
+  } catch {
+    return false;
+  }
+}
+
+/** ¿Es una página del servidor de Zer0Code al que está conectada la app? (mismo origen exacto) */
+function isAppUrl(url) {
+  const origin = currentOrigin();
+  if (!origin) return false;
+  try {
+    return new URL(url).origin === new URL(origin).origin;
+  } catch {
+    return false;
+  }
 }
 
 function currentOrigin() {
@@ -443,7 +471,7 @@ async function launch() {
 // ---------------------------------------------------------------------------
 // IPC (solo desde la pantalla de conexión, salvo cambiar de servidor y enfocar)
 // ---------------------------------------------------------------------------
-const fromConnectScreen = (event) => String(event.senderFrame?.url || '').startsWith('file://');
+const fromConnectScreen = (event) => isConnectScreen(event.senderFrame?.url);
 
 ipcMain.handle('desktop:get-state', (event) => {
   if (!fromConnectScreen(event)) return null;
