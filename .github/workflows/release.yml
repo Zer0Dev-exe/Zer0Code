@@ -168,10 +168,13 @@ jobs:
         run: |
           MOUNT="$(mktemp -d)"
           hdiutil attach "$(ls dist/out/*.dmg)" -mountpoint "$MOUNT" -nobrowse
+          # Limpiar también si la firma o el smoke test fallan, conservando su error.
+          trap 'hdiutil detach -force "$MOUNT" || true' EXIT
           RES="$MOUNT/Zer0Code.app/Contents/Resources"
           codesign --verify "$MOUNT/Zer0Code.app"
           bash packaging/smoke-test.sh "$RES/runtime/node" "$RES/app"
-          hdiutil detach "$MOUNT"
+          bash packaging/macos/detach-dmg.sh "$MOUNT"
+          trap - EXIT
       - uses: actions/upload-artifact@v4
         with:
           name: macos
