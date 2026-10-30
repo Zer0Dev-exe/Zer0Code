@@ -304,16 +304,19 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 /**
  * IP real de quien intenta entrar. Detrás de un proxy en la misma máquina (cloudflared, Tailscale Serve,
  * nginx…) todas las peticiones llegan desde 127.0.0.1: sin esto, cinco fallos de cualquiera bloquearían
- * a todo el mundo. Las cabeceras del proxy solo se creen si la conexión viene de esta máquina: desde
- * fuera no se pueden falsificar.
+ * a todo el mundo.
+ *
+ * Solo se cree la ÚLTIMA entrada de X-Forwarded-For: es la que añade el proxy más cercano con la IP que
+ * él ve (Cloudflare, Tailscale Serve, Caddy y nginx con proxy_add_x_forwarded_for). Las anteriores, igual
+ * que CF-Connecting-IP o X-Real-IP, las puede traer el propio cliente (Tailscale Serve las deja pasar) y
+ * servirían para esquivar el bloqueo o bloquear a otro. Y solo si la conexión viene de esta máquina.
  */
 export function clientIp(req) {
   const peer = req?.socket?.remoteAddress || req?.ip || '';
   if (LOOPBACK_ADDRESSES.has(peer)) {
-    const headers = req.headers || {};
-    const forwarded = String(headers['cf-connecting-ip'] || headers['x-real-ip'] || '').trim()
-      || String(headers['x-forwarded-for'] || '').split(',').map(v => v.trim()).filter(Boolean).pop();
-    if (forwarded && /^[0-9a-fA-F:.]{2,45}$/.test(forwarded)) return forwarded;
+    const hops = String(req.headers?.['x-forwarded-for'] || '').split(',').map(v => v.trim()).filter(Boolean);
+    const nearest = hops.at(-1);
+    if (nearest && /^[0-9a-fA-F:.]{2,45}$/.test(nearest)) return nearest;
   }
   return peer || 'desconocida';
 }
