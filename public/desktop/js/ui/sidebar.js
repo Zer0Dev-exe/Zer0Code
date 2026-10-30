@@ -180,7 +180,7 @@ function foot() {
     h('span', { class: 'profile-text' }, h('span', { class: 'profile-name truncate' }, name), sub),
     icon('chevron-up', 'profile-chev'));
   return h('div', { class: 'sidebar-footer' },
-    u?.current ? h('button', { class: 'sidebar-version', type: 'button', title: 'Ver las novedades', onclick: openWhatsNew }, `Zer0Code v${u.current}`) : null,
+    u?.current ? h('button', { class: 'sidebar-version', type: 'button', title: 'Ver las novedades', 'aria-label': `Zer0Code v${u.current} · Ver novedades`, onclick: openWhatsNew }, `Zer0Code v${u.current}`) : null,
     h('div', { class: 'sidebar-foot' },
       card,
       h('div', { class: 'foot-actions' },
