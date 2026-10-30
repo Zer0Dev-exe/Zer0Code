@@ -173,7 +173,12 @@ jobs:
           RES="$MOUNT/Zer0Code.app/Contents/Resources"
           codesign --verify "$MOUNT/Zer0Code.app"
           bash packaging/smoke-test.sh "$RES/runtime/node" "$RES/app"
-          bash packaging/macos/detach-dmg.sh "$MOUNT"
+          detached=0
+          for attempt in 1 2 3; do
+            if hdiutil detach "$MOUNT"; then detached=1; break; fi
+            if [ "$attempt" -lt 3 ]; then sleep 2; fi
+          done
+          if [ "$detached" -eq 0 ]; then hdiutil detach -force "$MOUNT"; fi
           trap - EXIT
       - uses: actions/upload-artifact@v4
         with:
