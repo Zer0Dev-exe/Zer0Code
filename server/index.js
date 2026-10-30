@@ -166,7 +166,9 @@ app.use((req, res, next) => {
  */
 function pageCsp(html) {
   const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
-    .map(m => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+    // El navegador convierte CRLF y CR sueltos en LF antes de calcular el hash (p. ej. un checkout de
+    // Windows con core.autocrlf): se hace lo mismo para que coincida
+    .map(m => `'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`);
   return [
     "default-src 'self'",
     `script-src 'self' ${hashes.join(' ')}`.trim(),
