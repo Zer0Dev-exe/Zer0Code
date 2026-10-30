@@ -62,6 +62,6 @@ export function readCodexCatalog(binary, { timeout = 15000 } = {}) {
         }
       }
     });
-    send({ id, method: 'initialize', params: { clientInfo: { name: 'zer0code', version: '1.5.7' } } });
+    send({ id, method: 'initialize', params: { clientInfo: { name: 'zer0code', version: '1.6.0' } } });
   });
 }
