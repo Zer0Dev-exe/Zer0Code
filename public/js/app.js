@@ -762,7 +762,7 @@ function resumeLiveTask(live) {
   currentAccumulatedText = msg.text || '';
   currentSegmentText = currentAccumulatedText;
   if (currentSegmentText.trim()) {
-    currentTextElement.innerHTML = window.marked ? marked.parse(currentSegmentText) : escapeHtml(currentSegmentText);
+    currentTextElement.innerHTML = renderMarkdown(currentSegmentText);
   }
   setRunning(true);
   scrollToBottom();
@@ -1045,7 +1045,7 @@ function appendAssistantMsgStatic(msg) {
     `;
   }
 
-  const renderedContent = window.marked ? marked.parse(msg.text || '') : escapeHtml(msg.text || '');
+  const renderedContent = renderMarkdown(msg.text || '');
 
   row.innerHTML = `
     <div class="assistant-head">
@@ -1697,7 +1697,7 @@ function handleWsMessage(data) {
         if (!currentSegmentText.trim()) break;
         currentTextElement.style.display = '';
         if (window.marked) {
-          currentTextElement.innerHTML = marked.parse(currentSegmentText);
+          currentTextElement.innerHTML = renderMarkdown(currentSegmentText);
         } else {
           currentTextElement.textContent = currentSegmentText;
         }
@@ -1764,7 +1764,7 @@ function handleWsMessage(data) {
         currentAccumulatedText = data.message.text;
         currentTextElement.style.display = '';
         if (window.marked) {
-          currentTextElement.innerHTML = marked.parse(currentAccumulatedText);
+          currentTextElement.innerHTML = renderMarkdown(currentAccumulatedText);
         } else {
           currentTextElement.textContent = currentAccumulatedText;
         }
@@ -4288,6 +4288,19 @@ async function submitUserForm() {
   } catch (err) {
     setUserFormStatus('Error al conectar con el servidor');
   }
+}
+
+// Markdown de las respuestas -> HTML seguro. Lo que escribe el modelo puede venir de páginas o archivos
+// que ha leído (inyección de instrucciones): sin limpiar, un <img onerror> o un <script> se ejecutaría
+// aquí con la sesión del usuario. Sin DOMPurify no se pinta HTML: se muestra el texto tal cual.
+function renderMarkdown(text) {
+  const source = String(text ?? '');
+  if (!window.marked || !window.DOMPurify) return escapeHtml(source);
+  return DOMPurify.sanitize(marked.parse(source), {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'object', 'embed'],
+    FORBID_ATTR: ['style']
+  });
 }
 
 function escapeHtml(str) {

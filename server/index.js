@@ -204,6 +204,19 @@ app.get(['/', '/index.html'], (req, res) => {
   res.type('html').send(html);
 });
 
+// Librerías de la web servidas por este mismo servidor (antes venían de un CDN sin versión fija):
+// el Markdown de las respuestas se convierte con marked y se limpia con DOMPurify antes de pintarlo
+const VENDOR_FILES = {
+  'marked.js': path.join(projectRoot, 'node_modules', 'marked', 'lib', 'marked.umd.js'),
+  'purify.js': path.join(projectRoot, 'node_modules', 'dompurify', 'dist', 'purify.min.js')
+};
+app.get('/vendor/:file', (req, res) => {
+  const file = VENDOR_FILES[req.params.file];
+  if (!file) return res.status(404).end();
+  // La ruta es fija (de la lista de arriba): se permite aunque el proyecto esté en una carpeta oculta
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=3600').sendFile(file, { dotfiles: 'allow' });
+});
+
 app.use(express.static(path.join(projectRoot, 'public')));
 
 // Enviar a todos los dispositivos autenticados (datos comunes: catálogo de modelos, límites del plan)
