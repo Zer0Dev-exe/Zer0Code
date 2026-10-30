@@ -10,7 +10,7 @@ const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
-const { fileURLToPath } = require('url');
+const { createNavigationGuard } = require('./navigation');
 const { createUpdater } = require('./updater');
 
 const APP_NAME = 'Zer0Code';
@@ -348,30 +348,10 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
-const CONNECT_FILE = path.join(__dirname, 'connect.html');
-const samePath = (a, b) => (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
-
-/** ¿Es la pantalla de conexión de la app (con o sin ?parámetros)? Se compara como ruta, no como texto */
-function isConnectScreen(url) {
-  try {
-    const raw = String(url || '');
-    if (!raw.startsWith('file:')) return false;
-    return samePath(path.resolve(fileURLToPath(raw.split(/[?#]/)[0])), path.resolve(CONNECT_FILE));
-  } catch {
-    return false;
-  }
-}
-
-/** ¿Es una página del servidor de Zer0Code al que está conectada la app? (mismo origen exacto) */
-function isAppUrl(url) {
-  const origin = currentOrigin();
-  if (!origin) return false;
-  try {
-    return new URL(url).origin === new URL(origin).origin;
-  } catch {
-    return false;
-  }
-}
+const { isConnectScreen, isAppUrl } = createNavigationGuard({
+  connectFile: path.join(__dirname, 'connect.html'),
+  getOrigin: currentOrigin
+});
 
 function currentOrigin() {
   if (config.mode === 'local') return serverOrigin;

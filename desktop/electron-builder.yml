@@ -10,6 +10,7 @@ directories:
   buildResources: build
 files:
   - main.js
+  - navigation.js
   - preload.js
   - connect.html
   - updater.js
