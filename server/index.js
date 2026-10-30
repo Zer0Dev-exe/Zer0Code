@@ -3,6 +3,7 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs';
+import crypto from 'crypto';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
@@ -147,8 +148,43 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  // Solo el micrófono (dictado por voz) para esta web; nada de cámara, ubicación, pagos ni USB
+  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), payment=(), usb=(), microphone=(self)');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Por HTTPS (directo o detrás de Cloudflare/Tailscale), el navegador no vuelve a intentar HTTP
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000');
+  }
   next();
 });
+
+/**
+ * Content-Security-Policy de las páginas de la web y de la interfaz de escritorio. Los únicos scripts que
+ * se ejecutan son los del propio servidor y los <script> en línea de la página (por su hash): un HTML
+ * inyectado no puede cargar ni ejecutar código. Las imágenes pueden venir de fuera (avatares).
+ */
+function pageCsp(html) {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    // El navegador convierte CRLF y CR sueltos en LF antes de calcular el hash (p. ej. un checkout de
+    // Windows con core.autocrlf): se hace lo mismo para que coincida
+    .map(m => `'sha256-${crypto.createHash('sha256').update(m[1].replace(/\r\n?/g, '\n')).digest('base64')}'`);
+  return [
+    "default-src 'self'",
+    `script-src 'self' ${hashes.join(' ')}`.trim(),
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    // La interfaz de escritorio lee las novedades de GitHub
+    "connect-src 'self' ws: wss: https://api.github.com",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join('; ');
+}
 
 assignLegacyOwner(getAdminUsername());
 
@@ -201,7 +237,26 @@ app.get(['/', '/index.html'], (req, res) => {
     .replace('<span class="brand-text">Zer0Code</span>', `<span class="brand-text">${escapeAttr(APP_NAME)}</span>`)
     .replace('<h1 class="login-title">Zer0Code</h1>', `<h1 class="login-title">${escapeAttr(APP_NAME)}</h1>`)
     .replace('name="apple-mobile-web-app-title" content="Zer0Code"', `name="apple-mobile-web-app-title" content="${escapeAttr(APP_NAME)}"`);
-  res.type('html').send(html);
+  res.set('Content-Security-Policy', pageCsp(html)).type('html').send(html);
+});
+
+// Interfaz de escritorio (la carga la app en /desktop/): misma política
+app.get(['/desktop/', '/desktop/index.html'], (req, res) => {
+  const html = fs.readFileSync(path.join(projectRoot, 'public', 'desktop', 'index.html'), 'utf-8');
+  res.set({ 'Content-Security-Policy': pageCsp(html), 'Cache-Control': 'no-cache' }).type('html').send(html);
+});
+
+// Librerías de la web servidas por este mismo servidor (antes venían de un CDN sin versión fija):
+// el Markdown de las respuestas se convierte con marked y se limpia con DOMPurify antes de pintarlo
+const VENDOR_FILES = {
+  'marked.js': path.join(projectRoot, 'node_modules', 'marked', 'lib', 'marked.umd.js'),
+  'purify.js': path.join(projectRoot, 'node_modules', 'dompurify', 'dist', 'purify.min.js')
+};
+app.get('/vendor/:file', (req, res) => {
+  const file = VENDOR_FILES[req.params.file];
+  if (!file) return res.status(404).end();
+  // La ruta es fija (de la lista de arriba): se permite aunque el proyecto esté en una carpeta oculta
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=3600').sendFile(file, { dotfiles: 'allow' });
 });
 
 // Librerías de la web servidas por este mismo servidor (antes venían de un CDN sin versión fija):
